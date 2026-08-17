@@ -1,4 +1,4 @@
-"""MongoDB collection names, validators, and indexes."""
+"""MongoDB collection names, validators, and indexes (aligned to data spec)."""
 
 from __future__ import annotations
 
@@ -23,6 +23,10 @@ def _object_id() -> dict[str, str]:
     return {"bsonType": "objectId"}
 
 
+def _object_id_or_null() -> dict[str, Any]:
+    return {"bsonType": ["objectId", "null"]}
+
+
 def _string(min_length: int = 1) -> dict[str, Any]:
     return {"bsonType": "string", "minLength": min_length}
 
@@ -31,12 +35,24 @@ def _int_min(minimum: int = 0) -> dict[str, Any]:
     return {"bsonType": "int", "minimum": minimum}
 
 
+def _double() -> dict[str, str]:
+    return {"bsonType": "double"}
+
+
 def _double_min(minimum: float = 0) -> dict[str, Any]:
     return {"bsonType": "double", "minimum": minimum}
 
 
+def _decimal() -> dict[str, str]:
+    return {"bsonType": "decimal"}
+
+
 def _date() -> dict[str, str]:
     return {"bsonType": "date"}
+
+
+def _date_or_null() -> dict[str, Any]:
+    return {"bsonType": ["date", "null"]}
 
 
 def _bool() -> dict[str, str]:
@@ -47,276 +63,242 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
     "products": {
         "$jsonSchema": {
             "bsonType": "object",
-            "required": [
-                "sku",
-                "name",
-                "category",
-                "unit",
-                "safety_stock",
-                "unit_cost",
-                "status",
-            ],
+            "required": ["sku", "name", "category", "unit_cost", "sell_price"],
             "properties": {
+                "_id": _object_id(),
                 "sku": _string(),
                 "name": _string(),
                 "category": _string(),
-                "unit": {"enum": ["each", "pack", "kg", "litre", "metre"]},
-                "safety_stock": _int_min(0),
-                "unit_cost": _double_min(0),
-                "status": {"enum": ["active", "discontinued"]},
+                "unit_cost": _decimal(),
+                "sell_price": _decimal(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "stores": {
         "$jsonSchema": {
             "bsonType": "object",
-            "required": ["store_code", "name", "city", "state", "status"],
+            "required": ["name", "region", "latitude", "longitude"],
             "properties": {
-                "store_code": _string(),
+                "_id": _object_id(),
                 "name": _string(),
-                "city": _string(),
-                "state": {
-                    "enum": ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]
-                },
-                "geo": {
-                    "bsonType": "object",
-                    "required": ["type", "coordinates"],
-                    "properties": {
-                        "type": {"enum": ["Point"]},
-                        "coordinates": {
-                            "bsonType": "array",
-                            "minItems": 2,
-                            "maxItems": 2,
-                            "items": {"bsonType": "double"},
-                        },
-                    },
-                },
-                "status": {"enum": ["active", "inactive"]},
+                "region": _string(),
+                "latitude": _double(),
+                "longitude": _double(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "inventory": {
         "$jsonSchema": {
             "bsonType": "object",
-            "required": ["store_id", "product_id", "on_hand"],
+            "required": [
+                "store_id",
+                "product_id",
+                "on_hand",
+                "reserved",
+                "safety_stock",
+                "updated_at",
+            ],
             "properties": {
+                "_id": _object_id(),
                 "store_id": _object_id(),
                 "product_id": _object_id(),
                 "on_hand": _int_min(0),
+                "reserved": _int_min(0),
+                "safety_stock": _int_min(0),
+                "updated_at": _date(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "sales_daily": {
         "$jsonSchema": {
             "bsonType": "object",
-            "required": ["store_id", "product_id", "date", "qty"],
+            "required": [
+                "date",
+                "store_id",
+                "product_id",
+                "units_sold",
+                "sell_price",
+            ],
             "properties": {
+                "_id": _object_id(),
+                "date": _date(),
                 "store_id": _object_id(),
                 "product_id": _object_id(),
-                "date": _date(),
-                "qty": _int_min(0),
+                "units_sold": _int_min(0),
+                "sell_price": _decimal(),
+                "promotion_id": _object_id_or_null(),
+                "weather_id": _object_id_or_null(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "suppliers": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "supplier_code",
                 "name",
                 "approved",
-                "lead_time_days",
+                "default_lead_days",
                 "min_order_qty",
-                "status",
             ],
             "properties": {
-                "supplier_code": _string(),
+                "_id": _object_id(),
                 "name": _string(),
                 "approved": _bool(),
-                "lead_time_days": _int_min(0),
+                "default_lead_days": _int_min(0),
                 "min_order_qty": _int_min(1),
-                "status": {"enum": ["active", "inactive"]},
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "supplier_products": {
         "$jsonSchema": {
             "bsonType": "object",
-            "required": ["supplier_id", "product_id", "unit_cost", "moq"],
+            "required": [
+                "supplier_id",
+                "product_id",
+                "unit_cost",
+                "available_qty",
+                "lead_days",
+            ],
             "properties": {
+                "_id": _object_id(),
                 "supplier_id": _object_id(),
                 "product_id": _object_id(),
-                "unit_cost": _double_min(0),
-                "moq": _int_min(1),
+                "unit_cost": _decimal(),
+                "available_qty": _int_min(0),
+                "lead_days": _int_min(0),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "supplier_deliveries": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "delivery_code",
                 "supplier_id",
-                "store_id",
                 "product_id",
-                "qty",
-                "status",
-                "ordered_at",
-                "expected_at",
+                "expected_date",
+                "ordered_qty",
+                "received_qty",
             ],
             "properties": {
-                "delivery_code": _string(),
+                "_id": _object_id(),
                 "supplier_id": _object_id(),
-                "store_id": _object_id(),
                 "product_id": _object_id(),
-                "qty": _int_min(1),
-                "status": {
-                    "enum": ["ordered", "in_transit", "delivered", "cancelled"]
-                },
-                "ordered_at": _date(),
-                "expected_at": _date(),
-                "delivered_at": _date(),
+                "expected_date": _date(),
+                "actual_date": _date_or_null(),
+                "ordered_qty": _int_min(1),
+                "received_qty": _int_min(0),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "purchase_orders": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "po_code",
                 "supplier_id",
                 "store_id",
+                "product_id",
+                "qty",
+                "expected_date",
                 "status",
-                "ordered_at",
-                "lines",
             ],
             "properties": {
-                "po_code": _string(),
+                "_id": _object_id(),
                 "supplier_id": _object_id(),
                 "store_id": _object_id(),
-                "status": {
-                    "enum": ["draft", "submitted", "approved", "received", "cancelled"]
-                },
-                "ordered_at": _date(),
-                "lines": {
-                    "bsonType": "array",
-                    "minItems": 1,
-                    "items": {
-                        "bsonType": "object",
-                        "required": ["product_id", "qty", "unit_cost"],
-                        "properties": {
-                            "product_id": _object_id(),
-                            "qty": _int_min(1),
-                            "unit_cost": _double_min(0),
-                        },
-                    },
-                },
+                "product_id": _object_id(),
+                "qty": _int_min(1),
+                "expected_date": _date(),
+                "status": _string(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "stock_transfers": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "transfer_code",
+                "product_id",
                 "from_store_id",
                 "to_store_id",
-                "product_id",
                 "qty",
+                "expected_date",
                 "status",
-                "requested_at",
             ],
             "properties": {
-                "transfer_code": _string(),
+                "_id": _object_id(),
+                "product_id": _object_id(),
                 "from_store_id": _object_id(),
                 "to_store_id": _object_id(),
-                "product_id": _object_id(),
                 "qty": _int_min(1),
-                "status": {
-                    "enum": ["requested", "in_transit", "received", "cancelled"]
-                },
-                "requested_at": _date(),
-                "received_at": _date(),
+                "expected_date": _date(),
+                "status": _string(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "promotions": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "promo_code",
-                "name",
-                "product_ids",
-                "discount_pct",
+                "product_id",
+                "store_ids",
                 "start_date",
                 "end_date",
-                "status",
+                "uplift_pct",
             ],
             "properties": {
-                "promo_code": _string(),
-                "name": _string(),
-                "product_ids": {
-                    "bsonType": "array",
-                    "minItems": 1,
-                    "items": _object_id(),
-                },
+                "_id": _object_id(),
+                "product_id": _object_id(),
                 "store_ids": {
                     "bsonType": "array",
                     "items": _object_id(),
                 },
-                "discount_pct": {
-                    "bsonType": "double",
-                    "minimum": 0,
-                    "maximum": 100,
-                },
                 "start_date": _date(),
                 "end_date": _date(),
-                "status": {"enum": ["scheduled", "active", "ended", "cancelled"]},
+                "uplift_pct": _double(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
     "weather_daily": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "store_id",
                 "date",
-                "temp_max_c",
-                "temp_min_c",
+                "region",
+                "max_temp",
                 "rainfall_mm",
+                "severe_weather",
             ],
             "properties": {
-                "store_id": _object_id(),
+                "_id": _object_id(),
                 "date": _date(),
-                "temp_max_c": {"bsonType": "double"},
-                "temp_min_c": {"bsonType": "double"},
+                "region": _string(),
+                "max_temp": _double(),
                 "rainfall_mm": _double_min(0),
+                "severe_weather": _bool(),
             },
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
     },
 }
 
 
-COLLECTION_INDEXES: dict[str, list[list[tuple[str, int]] | dict[str, Any]]] = {
+COLLECTION_INDEXES: dict[str, list[tuple[list[tuple[str, Any]], dict[str, Any]]]] = {
     "products": [
         ([("sku", 1)], {"unique": True, "name": "uniq_sku"}),
-        ([("category", 1), ("status", 1)], {"name": "category_status"}),
+        ([("category", 1)], {"name": "by_category"}),
     ],
     "stores": [
-        ([("store_code", 1)], {"unique": True, "name": "uniq_store_code"}),
-        ([("geo", "2dsphere")], {"name": "geo_2dsphere"}),
-        ([("state", 1), ("status", 1)], {"name": "state_status"}),
+        ([("name", 1)], {"unique": True, "name": "uniq_store_name"}),
+        ([("region", 1)], {"name": "by_region"}),
     ],
     "inventory": [
         (
@@ -331,10 +313,12 @@ COLLECTION_INDEXES: dict[str, list[list[tuple[str, int]] | dict[str, Any]]] = {
             {"unique": True, "name": "uniq_store_product_date"},
         ),
         ([("date", 1)], {"name": "by_date"}),
+        ([("promotion_id", 1)], {"name": "by_promotion", "sparse": True}),
+        ([("weather_id", 1)], {"name": "by_weather", "sparse": True}),
     ],
     "suppliers": [
-        ([("supplier_code", 1)], {"unique": True, "name": "uniq_supplier_code"}),
-        ([("approved", 1), ("status", 1)], {"name": "approved_status"}),
+        ([("name", 1)], {"unique": True, "name": "uniq_supplier_name"}),
+        ([("approved", 1)], {"name": "by_approved"}),
     ],
     "supplier_products": [
         (
@@ -344,29 +328,27 @@ COLLECTION_INDEXES: dict[str, list[list[tuple[str, int]] | dict[str, Any]]] = {
         ([("product_id", 1)], {"name": "by_product"}),
     ],
     "supplier_deliveries": [
-        ([("delivery_code", 1)], {"unique": True, "name": "uniq_delivery_code"}),
-        ([("store_id", 1), ("status", 1)], {"name": "store_status"}),
-        ([("supplier_id", 1), ("expected_at", 1)], {"name": "supplier_expected"}),
+        ([("supplier_id", 1), ("expected_date", 1)], {"name": "supplier_expected"}),
+        ([("product_id", 1), ("expected_date", 1)], {"name": "product_expected"}),
     ],
     "purchase_orders": [
-        ([("po_code", 1)], {"unique": True, "name": "uniq_po_code"}),
         ([("store_id", 1), ("status", 1)], {"name": "store_status"}),
-        ([("supplier_id", 1), ("ordered_at", 1)], {"name": "supplier_ordered"}),
+        ([("supplier_id", 1), ("expected_date", 1)], {"name": "supplier_expected"}),
+        ([("product_id", 1)], {"name": "by_product"}),
     ],
     "stock_transfers": [
-        ([("transfer_code", 1)], {"unique": True, "name": "uniq_transfer_code"}),
         ([("from_store_id", 1), ("status", 1)], {"name": "from_status"}),
         ([("to_store_id", 1), ("status", 1)], {"name": "to_status"}),
+        ([("product_id", 1), ("expected_date", 1)], {"name": "product_expected"}),
     ],
     "promotions": [
-        ([("promo_code", 1)], {"unique": True, "name": "uniq_promo_code"}),
+        ([("product_id", 1), ("start_date", 1), ("end_date", 1)], {"name": "product_dates"}),
         ([("start_date", 1), ("end_date", 1)], {"name": "date_range"}),
-        ([("status", 1)], {"name": "by_status"}),
     ],
     "weather_daily": [
         (
-            [("store_id", 1), ("date", 1)],
-            {"unique": True, "name": "uniq_store_date"},
+            [("region", 1), ("date", 1)],
+            {"unique": True, "name": "uniq_region_date"},
         ),
         ([("date", 1)], {"name": "by_date"}),
     ],

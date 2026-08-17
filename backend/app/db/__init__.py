@@ -1,13 +1,11 @@
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Optional
 
 from pymongo import MongoClient
 from pymongo.database import Database
 
 from app.config import get_settings
 
-_client: MongoClient | None = None
+_client: Optional[MongoClient] = None
 
 
 def get_client() -> MongoClient:
@@ -23,7 +21,7 @@ def get_db() -> Database:
     return get_client()[settings.mongo_db]
 
 
-def ping() -> dict[str, Any]:
+def ping() -> dict:
     return get_client().admin.command("ping")
 
 

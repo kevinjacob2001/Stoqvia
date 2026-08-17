@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 from datetime import date, datetime
-from typing import Literal
+from decimal import Decimal
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -14,36 +13,33 @@ class ProductCreate(MongoModel):
     sku: str = Field(min_length=1)
     name: str = Field(min_length=1)
     category: str = Field(min_length=1)
-    unit: Literal["each", "pack", "kg", "litre", "metre"]
-    safety_stock: int = Field(ge=0)
-    unit_cost: float = Field(ge=0)
-    status: Literal["active", "discontinued"] = "active"
+    unit_cost: Decimal = Field(ge=0)
+    sell_price: Decimal = Field(ge=0)
 
 
 class Product(ProductCreate):
     id: str = Field(alias="_id")
 
 
-class GeoPoint(MongoModel):
-    type: Literal["Point"] = "Point"
-    coordinates: list[float] = Field(min_length=2, max_length=2)
+class StoreCreate(MongoModel):
+    name: str = Field(min_length=1)
+    region: str = Field(min_length=1)
+    latitude: float
+    longitude: float
 
-    @field_validator("coordinates")
+    @field_validator("latitude")
     @classmethod
-    def validate_lon_lat(cls, value: list[float]) -> list[float]:
-        lon, lat = value
-        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
-            raise ValueError("coordinates must be [longitude, latitude]")
+    def validate_latitude(cls, value: float) -> float:
+        if not -90 <= value <= 90:
+            raise ValueError("latitude must be between -90 and 90")
         return value
 
-
-class StoreCreate(MongoModel):
-    store_code: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-    city: str = Field(min_length=1)
-    state: Literal["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]
-    geo: GeoPoint | None = None
-    status: Literal["active", "inactive"] = "active"
+    @field_validator("longitude")
+    @classmethod
+    def validate_longitude(cls, value: float) -> float:
+        if not -180 <= value <= 180:
+            raise ValueError("longitude must be between -180 and 180")
+        return value
 
 
 class Store(StoreCreate):
@@ -54,6 +50,9 @@ class InventoryCreate(MongoModel):
     store_id: str
     product_id: str
     on_hand: int = Field(ge=0)
+    reserved: int = Field(ge=0)
+    safety_stock: int = Field(ge=0)
+    updated_at: datetime
 
 
 class Inventory(InventoryCreate):
@@ -61,10 +60,13 @@ class Inventory(InventoryCreate):
 
 
 class SalesDailyCreate(MongoModel):
+    date: date
     store_id: str
     product_id: str
-    date: date
-    qty: int = Field(ge=0)
+    units_sold: int = Field(ge=0)
+    sell_price: Decimal = Field(ge=0)
+    promotion_id: Optional[str] = None
+    weather_id: Optional[str] = None
 
 
 class SalesDaily(SalesDailyCreate):
@@ -72,12 +74,10 @@ class SalesDaily(SalesDailyCreate):
 
 
 class SupplierCreate(MongoModel):
-    supplier_code: str = Field(min_length=1)
     name: str = Field(min_length=1)
     approved: bool = True
-    lead_time_days: int = Field(ge=0)
+    default_lead_days: int = Field(ge=0)
     min_order_qty: int = Field(ge=1)
-    status: Literal["active", "inactive"] = "active"
 
 
 class Supplier(SupplierCreate):
@@ -87,8 +87,9 @@ class Supplier(SupplierCreate):
 class SupplierProductCreate(MongoModel):
     supplier_id: str
     product_id: str
-    unit_cost: float = Field(ge=0)
-    moq: int = Field(ge=1)
+    unit_cost: Decimal = Field(ge=0)
+    available_qty: int = Field(ge=0)
+    lead_days: int = Field(ge=0)
 
 
 class SupplierProduct(SupplierProductCreate):
@@ -96,34 +97,25 @@ class SupplierProduct(SupplierProductCreate):
 
 
 class SupplierDeliveryCreate(MongoModel):
-    delivery_code: str = Field(min_length=1)
     supplier_id: str
-    store_id: str
     product_id: str
-    qty: int = Field(ge=1)
-    status: Literal["ordered", "in_transit", "delivered", "cancelled"]
-    ordered_at: datetime
-    expected_at: datetime
-    delivered_at: datetime | None = None
+    expected_date: date
+    actual_date: Optional[date] = None
+    ordered_qty: int = Field(ge=1)
+    received_qty: int = Field(ge=0)
 
 
 class SupplierDelivery(SupplierDeliveryCreate):
     id: str = Field(alias="_id")
 
 
-class PurchaseOrderLine(MongoModel):
-    product_id: str
-    qty: int = Field(ge=1)
-    unit_cost: float = Field(ge=0)
-
-
 class PurchaseOrderCreate(MongoModel):
-    po_code: str = Field(min_length=1)
     supplier_id: str
     store_id: str
-    status: Literal["draft", "submitted", "approved", "received", "cancelled"]
-    ordered_at: datetime
-    lines: list[PurchaseOrderLine] = Field(min_length=1)
+    product_id: str
+    qty: int = Field(ge=1)
+    expected_date: date
+    status: str = Field(min_length=1)
 
 
 class PurchaseOrder(PurchaseOrderCreate):
@@ -131,14 +123,12 @@ class PurchaseOrder(PurchaseOrderCreate):
 
 
 class StockTransferCreate(MongoModel):
-    transfer_code: str = Field(min_length=1)
+    product_id: str
     from_store_id: str
     to_store_id: str
-    product_id: str
     qty: int = Field(ge=1)
-    status: Literal["requested", "in_transit", "received", "cancelled"]
-    requested_at: datetime
-    received_at: datetime | None = None
+    expected_date: date
+    status: str = Field(min_length=1)
 
 
 class StockTransfer(StockTransferCreate):
@@ -146,14 +136,11 @@ class StockTransfer(StockTransferCreate):
 
 
 class PromotionCreate(MongoModel):
-    promo_code: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-    product_ids: list[str] = Field(min_length=1)
-    store_ids: list[str] = Field(default_factory=list)
-    discount_pct: float = Field(ge=0, le=100)
+    product_id: str
+    store_ids: List[str] = Field(default_factory=list)
     start_date: date
     end_date: date
-    status: Literal["scheduled", "active", "ended", "cancelled"] = "scheduled"
+    uplift_pct: float
 
 
 class Promotion(PromotionCreate):
@@ -161,11 +148,11 @@ class Promotion(PromotionCreate):
 
 
 class WeatherDailyCreate(MongoModel):
-    store_id: str
     date: date
-    temp_max_c: float
-    temp_min_c: float
+    region: str = Field(min_length=1)
+    max_temp: float
     rainfall_mm: float = Field(ge=0)
+    severe_weather: bool = False
 
 
 class WeatherDaily(WeatherDailyCreate):
@@ -175,7 +162,7 @@ class WeatherDaily(WeatherDailyCreate):
 class CollectionInfo(BaseModel):
     name: str
     count: int
-    indexes: list[str]
+    indexes: List[str]
 
 
 class HealthResponse(BaseModel):
@@ -184,4 +171,4 @@ class HealthResponse(BaseModel):
     env: str
     mongo: str
     database: str
-    collections: list[str]
+    collections: List[str]

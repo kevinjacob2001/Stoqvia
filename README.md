@@ -1,11 +1,10 @@
 # Retail Inventory Copilot
 
-Python FastAPI + MongoDB backend for an Australian hardware retail inventory system.
 
 ## Layout
 
 ```
-retail-inventory-copilot/   (this repo)
+stoqvia/   (this repo)
 ├── backend/          FastAPI + PyMongo
 ├── frontend/         UI (placeholder)
 ├── data/             Seed / reference data
@@ -37,7 +36,12 @@ pip install -r requirements.txt
 # 4. Create collections + indexes
 python -m scripts.init_db
 
-# 5. Run API
+# 5. Seed synthetic data (from repo root)
+cd ..
+PYTHONPATH=. backend/.venv/bin/python -m data.seed.seed_all
+
+# 6. Run API
+cd backend
 uvicorn app.main:app --reload --app-dir .
 ```
 
@@ -58,6 +62,6 @@ Health: http://localhost:8000/api/v1/health
 | `purchase_orders` | Purchase orders |
 | `stock_transfers` | Inter-store transfers |
 | `promotions` | Promo campaigns |
-| `weather_daily` | Daily weather by store |
+| `weather_daily` | Daily weather by region |
 
 AI agents are not implemented yet.
