@@ -1,4 +1,4 @@
-import type { StoreInventoryResponse, StoreSummary } from "./types";
+import type { StoreInventoryResponse, StoreSummary } from "./types.ts";
 
 const API_BASE = "/api/v1";
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchStoreInventory, fetchStores } from "./api";
-import type { StoreInventoryResponse, StoreSummary } from "./types";
+import { fetchStoreInventory, fetchStores } from "./api.ts";
+import type { StoreInventoryResponse, StoreSummary } from "./types.ts";
 
 export default function App() {
   const [stores, setStores] = useState<StoreSummary[]>([]);
