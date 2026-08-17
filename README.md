@@ -8,7 +8,7 @@ MongoDB + FastAPI inventory balancing MVP.
 stoqvia/
 ├── backend/                 FastAPI + PyMongo
 ├── data/seed/json/          Source-of-truth seed data
-├── frontend/                Placeholder
+├── frontend/                React (Vite)
 ├── docker-compose.yml
 └── README.md
 ```
@@ -28,13 +28,14 @@ python -m scripts.init_db --reset
 cd ..
 PYTHONPATH=. backend/.venv/bin/python -m data.seed.seed_all
 
-# Run API
+# API
 cd backend
 uvicorn app.main:app --reload --app-dir .
 
-# Tests
-cd ..
-backend/.venv/bin/pytest
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
 Seed flow: JSON files in `data/seed/json/` → MongoDB.  
