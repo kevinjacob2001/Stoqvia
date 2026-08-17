@@ -1,0 +1,642 @@
+[
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PT-001",
+    "on_hand": 80,
+    "reserved": 10,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PT-002",
+    "on_hand": 77,
+    "reserved": 2,
+    "safety_stock": 22,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PT-003",
+    "on_hand": 52,
+    "reserved": 2,
+    "safety_stock": 15,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-HT-004",
+    "on_hand": 91,
+    "reserved": 2,
+    "safety_stock": 26,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-HT-005",
+    "on_hand": 84,
+    "reserved": 2,
+    "safety_stock": 24,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-HT-006",
+    "on_hand": 105,
+    "reserved": 2,
+    "safety_stock": 30,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-TI-007",
+    "on_hand": 182,
+    "reserved": 2,
+    "safety_stock": 52,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-TI-008",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PA-009",
+    "on_hand": 98,
+    "reserved": 2,
+    "safety_stock": 28,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PA-010",
+    "on_hand": 84,
+    "reserved": 2,
+    "safety_stock": 24,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PL-011",
+    "on_hand": 116,
+    "reserved": 2,
+    "safety_stock": 33,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-PL-012",
+    "on_hand": 60,
+    "reserved": 2,
+    "safety_stock": 17,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-EL-013",
+    "on_hand": 60,
+    "reserved": 2,
+    "safety_stock": 17,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-EL-014",
+    "on_hand": 77,
+    "reserved": 2,
+    "safety_stock": 22,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-GA-015",
+    "on_hand": 52,
+    "reserved": 2,
+    "safety_stock": 15,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-GA-016",
+    "on_hand": 91,
+    "reserved": 2,
+    "safety_stock": 26,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-BM-017",
+    "on_hand": 154,
+    "reserved": 2,
+    "safety_stock": 44,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-BM-018",
+    "on_hand": 91,
+    "reserved": 2,
+    "safety_stock": 26,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-BM-019",
+    "on_hand": 84,
+    "reserved": 2,
+    "safety_stock": 24,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "adelaide_cbd",
+    "product_id": "HW-BM-020",
+    "on_hand": 116,
+    "reserved": 2,
+    "safety_stock": 33,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PT-001",
+    "on_hand": 260,
+    "reserved": 8,
+    "safety_stock": 25,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PT-002",
+    "on_hand": 63,
+    "reserved": 2,
+    "safety_stock": 18,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PT-003",
+    "on_hand": 46,
+    "reserved": 2,
+    "safety_stock": 13,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-HT-004",
+    "on_hand": 77,
+    "reserved": 2,
+    "safety_stock": 22,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-HT-005",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-HT-006",
+    "on_hand": 88,
+    "reserved": 2,
+    "safety_stock": 25,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-TI-007",
+    "on_hand": 150,
+    "reserved": 2,
+    "safety_stock": 43,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-TI-008",
+    "on_hand": 56,
+    "reserved": 2,
+    "safety_stock": 16,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PA-009",
+    "on_hand": 80,
+    "reserved": 2,
+    "safety_stock": 23,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PA-010",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PL-011",
+    "on_hand": 94,
+    "reserved": 2,
+    "safety_stock": 27,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-PL-012",
+    "on_hand": 49,
+    "reserved": 2,
+    "safety_stock": 14,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-EL-013",
+    "on_hand": 49,
+    "reserved": 2,
+    "safety_stock": 14,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-EL-014",
+    "on_hand": 63,
+    "reserved": 2,
+    "safety_stock": 18,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-GA-015",
+    "on_hand": 46,
+    "reserved": 2,
+    "safety_stock": 13,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-GA-016",
+    "on_hand": 77,
+    "reserved": 2,
+    "safety_stock": 22,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-BM-017",
+    "on_hand": 126,
+    "reserved": 2,
+    "safety_stock": 36,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-BM-018",
+    "on_hand": 77,
+    "reserved": 2,
+    "safety_stock": 22,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-BM-019",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "marion",
+    "product_id": "HW-BM-020",
+    "on_hand": 94,
+    "reserved": 2,
+    "safety_stock": 27,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PT-001",
+    "on_hand": 175,
+    "reserved": 2,
+    "safety_stock": 50,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PT-002",
+    "on_hand": 56,
+    "reserved": 2,
+    "safety_stock": 16,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PT-003",
+    "on_hand": 42,
+    "reserved": 2,
+    "safety_stock": 12,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-HT-004",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-HT-005",
+    "on_hand": 63,
+    "reserved": 2,
+    "safety_stock": 18,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-HT-006",
+    "on_hand": 80,
+    "reserved": 2,
+    "safety_stock": 23,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-TI-007",
+    "on_hand": 140,
+    "reserved": 2,
+    "safety_stock": 40,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-TI-008",
+    "on_hand": 52,
+    "reserved": 2,
+    "safety_stock": 15,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PA-009",
+    "on_hand": 74,
+    "reserved": 2,
+    "safety_stock": 21,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PA-010",
+    "on_hand": 63,
+    "reserved": 2,
+    "safety_stock": 18,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PL-011",
+    "on_hand": 88,
+    "reserved": 2,
+    "safety_stock": 25,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-PL-012",
+    "on_hand": 46,
+    "reserved": 2,
+    "safety_stock": 13,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-EL-013",
+    "on_hand": 46,
+    "reserved": 2,
+    "safety_stock": 13,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-EL-014",
+    "on_hand": 56,
+    "reserved": 2,
+    "safety_stock": 16,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-GA-015",
+    "on_hand": 42,
+    "reserved": 2,
+    "safety_stock": 12,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-GA-016",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-BM-017",
+    "on_hand": 116,
+    "reserved": 2,
+    "safety_stock": 33,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-BM-018",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-BM-019",
+    "on_hand": 63,
+    "reserved": 2,
+    "safety_stock": 18,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "mile_end",
+    "product_id": "HW-BM-020",
+    "on_hand": 88,
+    "reserved": 2,
+    "safety_stock": 25,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PT-001",
+    "on_hand": 140,
+    "reserved": 2,
+    "safety_stock": 40,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PT-002",
+    "on_hand": 49,
+    "reserved": 2,
+    "safety_stock": 14,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PT-003",
+    "on_hand": 32,
+    "reserved": 2,
+    "safety_stock": 9,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-HT-004",
+    "on_hand": 56,
+    "reserved": 2,
+    "safety_stock": 16,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-HT-005",
+    "on_hand": 52,
+    "reserved": 2,
+    "safety_stock": 15,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-HT-006",
+    "on_hand": 66,
+    "reserved": 2,
+    "safety_stock": 19,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-TI-007",
+    "on_hand": 112,
+    "reserved": 2,
+    "safety_stock": 32,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-TI-008",
+    "on_hand": 42,
+    "reserved": 2,
+    "safety_stock": 12,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PA-009",
+    "on_hand": 63,
+    "reserved": 2,
+    "safety_stock": 18,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PA-010",
+    "on_hand": 52,
+    "reserved": 2,
+    "safety_stock": 15,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PL-011",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-PL-012",
+    "on_hand": 38,
+    "reserved": 2,
+    "safety_stock": 11,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-EL-013",
+    "on_hand": 38,
+    "reserved": 2,
+    "safety_stock": 11,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-EL-014",
+    "on_hand": 49,
+    "reserved": 2,
+    "safety_stock": 14,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-GA-015",
+    "on_hand": 32,
+    "reserved": 2,
+    "safety_stock": 9,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-GA-016",
+    "on_hand": 56,
+    "reserved": 2,
+    "safety_stock": 16,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-BM-017",
+    "on_hand": 94,
+    "reserved": 2,
+    "safety_stock": 27,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-BM-018",
+    "on_hand": 56,
+    "reserved": 2,
+    "safety_stock": 16,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-BM-019",
+    "on_hand": 52,
+    "reserved": 2,
+    "safety_stock": 15,
+    "updated_at": "2026-08-17T00:00:00"
+  },
+  {
+    "store_id": "modbury",
+    "product_id": "HW-BM-020",
+    "on_hand": 70,
+    "reserved": 2,
+    "safety_stock": 20,
+    "updated_at": "2026-08-17T00:00:00"
+  }
+]

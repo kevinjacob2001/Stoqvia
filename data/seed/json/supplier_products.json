@@ -1,0 +1,149 @@
+[
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-PT-001",
+    "unit_cost": "80.10",
+    "available_qty": 180,
+    "lead_days": 14
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-PT-001",
+    "unit_cost": "96.12",
+    "available_qty": 90,
+    "lead_days": 3
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-PT-002",
+    "unit_cost": "101.20",
+    "available_qty": 120,
+    "lead_days": 10
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-PT-003",
+    "unit_cost": "104.50",
+    "available_qty": 70,
+    "lead_days": 4
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-HT-004",
+    "unit_cost": "11.50",
+    "available_qty": 200,
+    "lead_days": 9
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-HT-005",
+    "unit_cost": "19.80",
+    "available_qty": 150,
+    "lead_days": 4
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-HT-006",
+    "unit_cost": "8.74",
+    "available_qty": 220,
+    "lead_days": 10
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-TI-007",
+    "unit_cost": "9.02",
+    "available_qty": 300,
+    "lead_days": 5
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-TI-008",
+    "unit_cost": "25.76",
+    "available_qty": 80,
+    "lead_days": 11
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-PA-009",
+    "unit_cost": "35.20",
+    "available_qty": 90,
+    "lead_days": 4
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-PA-010",
+    "unit_cost": "33.12",
+    "available_qty": 100,
+    "lead_days": 10
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-PL-011",
+    "unit_cost": "12.10",
+    "available_qty": 160,
+    "lead_days": 3
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-PL-012",
+    "unit_cost": "13.34",
+    "available_qty": 140,
+    "lead_days": 9
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-EL-013",
+    "unit_cost": "93.50",
+    "available_qty": 40,
+    "lead_days": 5
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-EL-014",
+    "unit_cost": "38.64",
+    "available_qty": 110,
+    "lead_days": 10
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-GA-015",
+    "unit_cost": "49.50",
+    "available_qty": 60,
+    "lead_days": 4
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-GA-016",
+    "unit_cost": "20.24",
+    "available_qty": 130,
+    "lead_days": 8
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-BM-017",
+    "unit_cost": "10.78",
+    "available_qty": 250,
+    "lead_days": 4
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-BM-018",
+    "unit_cost": "11.50",
+    "available_qty": 180,
+    "lead_days": 10
+  },
+  {
+    "supplier_id": "southern_precision",
+    "product_id": "HW-BM-019",
+    "unit_cost": "16.50",
+    "available_qty": 140,
+    "lead_days": 3
+  },
+  {
+    "supplier_id": "barossa_bulk",
+    "product_id": "HW-BM-020",
+    "unit_cost": "6.44",
+    "available_qty": 200,
+    "lead_days": 9
+  }
+]

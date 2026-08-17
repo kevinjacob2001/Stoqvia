@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from pymongo import MongoClient
 from pymongo.database import Database
@@ -21,7 +21,7 @@ def get_db() -> Database:
     return get_client()[settings.mongo_db]
 
 
-def ping() -> dict:
+def ping() -> Dict[str, Any]:
     return get_client().admin.command("ping")
 
 

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -65,8 +65,6 @@ class SalesDailyCreate(MongoModel):
     product_id: str
     units_sold: int = Field(ge=0)
     sell_price: Decimal = Field(ge=0)
-    promotion_id: Optional[str] = None
-    weather_id: Optional[str] = None
 
 
 class SalesDaily(SalesDailyCreate):
@@ -96,19 +94,6 @@ class SupplierProduct(SupplierProductCreate):
     id: str = Field(alias="_id")
 
 
-class SupplierDeliveryCreate(MongoModel):
-    supplier_id: str
-    product_id: str
-    expected_date: date
-    actual_date: Optional[date] = None
-    ordered_qty: int = Field(ge=1)
-    received_qty: int = Field(ge=0)
-
-
-class SupplierDelivery(SupplierDeliveryCreate):
-    id: str = Field(alias="_id")
-
-
 class PurchaseOrderCreate(MongoModel):
     supplier_id: str
     store_id: str
@@ -132,30 +117,6 @@ class StockTransferCreate(MongoModel):
 
 
 class StockTransfer(StockTransferCreate):
-    id: str = Field(alias="_id")
-
-
-class PromotionCreate(MongoModel):
-    product_id: str
-    store_ids: List[str] = Field(default_factory=list)
-    start_date: date
-    end_date: date
-    uplift_pct: float
-
-
-class Promotion(PromotionCreate):
-    id: str = Field(alias="_id")
-
-
-class WeatherDailyCreate(MongoModel):
-    date: date
-    region: str = Field(min_length=1)
-    max_temp: float
-    rainfall_mm: float = Field(ge=0)
-    severe_weather: bool = False
-
-
-class WeatherDaily(WeatherDailyCreate):
     id: str = Field(alias="_id")
 
 

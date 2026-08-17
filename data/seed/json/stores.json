@@ -1,0 +1,30 @@
+[
+  {
+    "id": "adelaide_cbd",
+    "name": "Adelaide CBD",
+    "region": "Adelaide CBD",
+    "latitude": -34.9285,
+    "longitude": 138.6007
+  },
+  {
+    "id": "marion",
+    "name": "Marion",
+    "region": "Southern Metro",
+    "latitude": -35.0152,
+    "longitude": 138.5495
+  },
+  {
+    "id": "mile_end",
+    "name": "Mile End",
+    "region": "Inner West",
+    "latitude": -34.9258,
+    "longitude": 138.5695
+  },
+  {
+    "id": "modbury",
+    "name": "Modbury",
+    "region": "North East",
+    "latitude": -34.8305,
+    "longitude": 138.6902
+  }
+]

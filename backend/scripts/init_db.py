@@ -19,12 +19,20 @@ from app.db.collections import (
     COLLECTION_INDEXES,
     COLLECTION_VALIDATORS,
     COLLECTIONS,
+    RETIRED_COLLECTIONS,
 )
 
 
 def ensure_collections(drop_existing: bool = False) -> None:
     db = get_db()
     existing = set(db.list_collection_names())
+
+    if drop_existing:
+        for name in RETIRED_COLLECTIONS:
+            if name in existing:
+                db.drop_collection(name)
+                existing.discard(name)
+                print(f"dropped  {name} (retired)")
 
     for name in COLLECTIONS:
         validator = COLLECTION_VALIDATORS[name]

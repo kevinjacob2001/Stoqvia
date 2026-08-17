@@ -1,20 +1,17 @@
-"""Master synthetic data seed script.
+"""Load seed JSON into MongoDB.
 
 Usage (from repo root):
     PYTHONPATH=. python -m data.seed.seed_all
-    PYTHONPATH=. python -m data.seed.seed_all --reset
 """
 
 from __future__ import annotations
 
 import json
-import random
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Dict, List
 
-# repo root on path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
@@ -29,26 +26,20 @@ from bson.decimal128 import Decimal128
 from app.config import get_settings
 from app.db import close_client, get_db, ping
 from app.db.collections import COLLECTIONS
-
-from data.seed.config import RANDOM_SEED, SALES_END_DATE, SALES_START_DATE
-from data.seed.generators.inventory import generate_inventory, strip_inventory_meta
-from data.seed.generators.products import generate_products, strip_product_meta
-from data.seed.generators.promotions import generate_promotions, strip_promotion_meta
-from data.seed.generators.purchase_orders import generate_purchase_orders, strip_po_meta
-from data.seed.generators.sales import generate_sales
-from data.seed.generators.stock_transfers import generate_stock_transfers, strip_transfer_meta
-from data.seed.generators.stores import generate_stores, strip_store_meta
-from data.seed.generators.supplier_deliveries import (
-    generate_supplier_deliveries,
-    strip_delivery_meta,
-)
-from data.seed.generators.suppliers import (
-    generate_supplier_products,
-    generate_suppliers,
-    strip_supplier_meta,
-)
-from data.seed.generators.weather import generate_weather
+from data.seed.build_sales import build_sales_jsonl
+from data.seed.loader import convert_many, load_json_array, load_jsonl
 from data.seed.validation import validate_dataset
+
+LOAD_ORDER = (
+    ("products", "products.json", False),
+    ("stores", "stores.json", False),
+    ("suppliers", "suppliers.json", False),
+    ("supplier_products", "supplier_products.json", False),
+    ("inventory", "inventory.json", False),
+    ("sales_daily", "sales_daily.jsonl", True),
+    ("purchase_orders", "purchase_orders.json", False),
+    ("stock_transfers", "stock_transfers.json", False),
+)
 
 
 def _jsonable(value: Any) -> Any:
@@ -65,16 +56,14 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
-def _insert(db, name: str, docs: list[dict[str, Any]], stripper: Callable | None = None) -> int:
+def _insert(db, name: str, docs: List[dict]) -> int:
     if not docs:
         return 0
-    payload = [stripper(d) if stripper else d for d in docs]
-    # bulk in chunks for large collections
-    chunk = 5000
     total = 0
+    chunk = 5000
     coll = db[name]
-    for i in range(0, len(payload), chunk):
-        result = coll.insert_many(payload[i : i + chunk], ordered=False)
+    for i in range(0, len(docs), chunk):
+        result = coll.insert_many(docs[i : i + chunk], ordered=False)
         total += len(result.inserted_ids)
     return total
 
@@ -85,60 +74,36 @@ def clear_collections(db) -> None:
         print(f"cleared  {name}")
 
 
-def seed(reset: bool = True) -> dict[str, int]:
+def seed(reset: bool = True) -> Dict[str, int]:
     settings = get_settings()
-    rng = random.Random(settings.seed_random_seed or RANDOM_SEED)
-
     print(f"Mongo URI : {settings.mongo_uri}")
     print(f"Database  : {settings.mongo_db}")
-    print(f"RNG seed  : {settings.seed_random_seed or RANDOM_SEED}")
-    print(f"Sales     : {SALES_START_DATE} → {SALES_END_DATE}")
     ping()
     print("ping      ok")
+
+    print("\nBuilding sales_daily.jsonl from JSON params...")
+    build_sales_jsonl()
 
     db = get_db()
     if reset:
         clear_collections(db)
 
-    print("\nGenerating...")
-    products = generate_products(rng)
-    stores = generate_stores()
-    suppliers = generate_suppliers()
-    supplier_products = generate_supplier_products(rng, products, suppliers)
-    weather = generate_weather(rng, stores)
-    promotions = generate_promotions(rng, products, stores)
-    inventory = generate_inventory(rng, stores, products)
-    print("  sales_daily (this may take a minute)...")
-    sales = generate_sales(rng, products, stores, promotions, weather)
-    deliveries = generate_supplier_deliveries(rng, suppliers, products, supplier_products)
-    purchase_orders = generate_purchase_orders(
-        rng, stores, products, suppliers, supplier_products
-    )
-    transfers = generate_stock_transfers(rng, stores, products)
+    id_map: Dict[str, ObjectId] = {}
+    counts: Dict[str, int] = {}
 
-    print("\nInserting...")
-    counts = {
-        "products": _insert(db, "products", products, strip_product_meta),
-        "stores": _insert(db, "stores", stores, strip_store_meta),
-        "suppliers": _insert(db, "suppliers", suppliers, strip_supplier_meta),
-        "supplier_products": _insert(db, "supplier_products", supplier_products),
-        "weather_daily": _insert(db, "weather_daily", weather),
-        "promotions": _insert(db, "promotions", promotions, strip_promotion_meta),
-        "inventory": _insert(db, "inventory", inventory, strip_inventory_meta),
-        "sales_daily": _insert(db, "sales_daily", sales),
-        "supplier_deliveries": _insert(
-            db, "supplier_deliveries", deliveries, strip_delivery_meta
-        ),
-        "purchase_orders": _insert(db, "purchase_orders", purchase_orders, strip_po_meta),
-        "stock_transfers": _insert(db, "stock_transfers", transfers, strip_transfer_meta),
-    }
+    print("\nLoading JSON -> MongoDB...")
+    for name, filename, is_jsonl in LOAD_ORDER:
+        raw = load_jsonl(filename) if is_jsonl else load_json_array(filename)
+        docs = convert_many(raw, id_map)
+        counts[name] = _insert(db, name, docs)
+        print(f"inserted {name:22s} {counts[name]:8d}  ({filename})")
 
     print("\n=== DOCUMENT COUNTS ===")
     for name in COLLECTIONS:
-        print(f"{name:22s} {counts.get(name, db[name].count_documents({})):8d}")
+        print(f"{name:22s} {counts.get(name, 0):8d}")
 
     report = validate_dataset(db)
-    report.print()
+    report.print_report()
 
     print("=== SAMPLE DOCUMENTS ===")
     for name in ("products", "stores", "inventory", "sales_daily", "suppliers"):
@@ -146,10 +111,27 @@ def seed(reset: bool = True) -> dict[str, int]:
         print(f"\n{name}:")
         print(json.dumps(_jsonable(sample), indent=2))
 
+    drill = db.products.find_one({"sku": "HW-PT-001"})
+    cbd = db.stores.find_one({"name": "Adelaide CBD"})
+    marion = db.stores.find_one({"name": "Marion"})
+    if drill and cbd and marion:
+        print("\n=== DRILL DEMO ===")
+        for store in (cbd, marion):
+            inv = db.inventory.find_one(
+                {"store_id": store["_id"], "product_id": drill["_id"]}
+            )
+            if inv is None:
+                continue
+            usable = inv["on_hand"] - inv["reserved"]
+            print(
+                f"{store['name']}: on_hand={inv['on_hand']} reserved={inv['reserved']} "
+                f"usable={usable} safety={inv['safety_stock']}"
+            )
+
     if not report.ok:
         raise SystemExit(1)
 
-    print("Dataset ready for next phase: Supply Service API")
+    print("\nPhase 0 complete. Dataset ready for Phase 1: Inventory API.")
     return counts
 
 

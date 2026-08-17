@@ -1,0 +1,162 @@
+[
+  {
+    "id": "HW-PT-001",
+    "sku": "HW-PT-001",
+    "name": "Cordless Drill 18V",
+    "category": "Power Tools",
+    "unit_cost": "89.00",
+    "sell_price": "129.05"
+  },
+  {
+    "id": "HW-PT-002",
+    "sku": "HW-PT-002",
+    "name": "Impact Driver Kit",
+    "category": "Power Tools",
+    "unit_cost": "110.00",
+    "sell_price": "156.20"
+  },
+  {
+    "id": "HW-PT-003",
+    "sku": "HW-PT-003",
+    "name": "Circular Saw 185mm",
+    "category": "Power Tools",
+    "unit_cost": "95.00",
+    "sell_price": "133.00"
+  },
+  {
+    "id": "HW-HT-004",
+    "sku": "HW-HT-004",
+    "name": "Claw Hammer 16oz",
+    "category": "Hand Tools",
+    "unit_cost": "12.50",
+    "sell_price": "19.38"
+  },
+  {
+    "id": "HW-HT-005",
+    "sku": "HW-HT-005",
+    "name": "Screwdriver Set 12pc",
+    "category": "Hand Tools",
+    "unit_cost": "18.00",
+    "sell_price": "27.00"
+  },
+  {
+    "id": "HW-HT-006",
+    "sku": "HW-HT-006",
+    "name": "Tape Measure 8m",
+    "category": "Hand Tools",
+    "unit_cost": "9.50",
+    "sell_price": "15.20"
+  },
+  {
+    "id": "HW-TI-007",
+    "sku": "HW-TI-007",
+    "name": "Pine Stud 90x45 2.4m",
+    "category": "Timber",
+    "unit_cost": "8.20",
+    "sell_price": "11.07"
+  },
+  {
+    "id": "HW-TI-008",
+    "sku": "HW-TI-008",
+    "name": "Plywood Sheet 12mm",
+    "category": "Timber",
+    "unit_cost": "28.00",
+    "sell_price": "36.40"
+  },
+  {
+    "id": "HW-PA-009",
+    "sku": "HW-PA-009",
+    "name": "Exterior Acrylic White 4L",
+    "category": "Paint",
+    "unit_cost": "32.00",
+    "sell_price": "46.40"
+  },
+  {
+    "id": "HW-PA-010",
+    "sku": "HW-PA-010",
+    "name": "Interior Low-VOC 4L",
+    "category": "Paint",
+    "unit_cost": "36.00",
+    "sell_price": "51.12"
+  },
+  {
+    "id": "HW-PL-011",
+    "sku": "HW-PL-011",
+    "name": "PVC Pipe 50mm 3m",
+    "category": "Plumbing",
+    "unit_cost": "11.00",
+    "sell_price": "15.40"
+  },
+  {
+    "id": "HW-PL-012",
+    "sku": "HW-PL-012",
+    "name": "Brass Ball Valve 20mm",
+    "category": "Plumbing",
+    "unit_cost": "14.50",
+    "sell_price": "21.46"
+  },
+  {
+    "id": "HW-EL-013",
+    "sku": "HW-EL-013",
+    "name": "Electrical Cable 2.5mm 100m",
+    "category": "Electrical",
+    "unit_cost": "85.00",
+    "sell_price": "108.80"
+  },
+  {
+    "id": "HW-EL-014",
+    "sku": "HW-EL-014",
+    "name": "LED Downlight Pack 6",
+    "category": "Electrical",
+    "unit_cost": "42.00",
+    "sell_price": "60.90"
+  },
+  {
+    "id": "HW-GA-015",
+    "sku": "HW-GA-015",
+    "name": "Hose Reel 30m",
+    "category": "Garden",
+    "unit_cost": "45.00",
+    "sell_price": "63.90"
+  },
+  {
+    "id": "HW-GA-016",
+    "sku": "HW-GA-016",
+    "name": "Lawn Fertiliser 10kg",
+    "category": "Garden",
+    "unit_cost": "22.00",
+    "sell_price": "32.56"
+  },
+  {
+    "id": "HW-BM-017",
+    "sku": "HW-BM-017",
+    "name": "Cement Bag 20kg",
+    "category": "Building Materials",
+    "unit_cost": "9.80",
+    "sell_price": "12.25"
+  },
+  {
+    "id": "HW-BM-018",
+    "sku": "HW-BM-018",
+    "name": "Rapid Set Concrete 20kg",
+    "category": "Building Materials",
+    "unit_cost": "12.50",
+    "sell_price": "16.00"
+  },
+  {
+    "id": "HW-BM-019",
+    "sku": "HW-BM-019",
+    "name": "Roofing Screw Pack",
+    "category": "Building Materials",
+    "unit_cost": "15.00",
+    "sell_price": "21.00"
+  },
+  {
+    "id": "HW-BM-020",
+    "sku": "HW-BM-020",
+    "name": "Construction Adhesive",
+    "category": "Building Materials",
+    "unit_cost": "7.00",
+    "sell_price": "10.50"
+  }
+]

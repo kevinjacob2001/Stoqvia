@@ -1,0 +1,33 @@
+{
+  "start_date": "2026-02-16",
+  "end_date": "2026-08-16",
+  "random_seed": 42,
+  "store_demand_mult": {
+    "adelaide_cbd": 1.45,
+    "marion": 1.2,
+    "mile_end": 1.1,
+    "modbury": 0.9
+  },
+  "product_baseline_daily": {
+    "HW-PT-001": 15.0,
+    "HW-PT-002": 5.0,
+    "HW-PT-003": 3.5,
+    "HW-HT-004": 6.0,
+    "HW-HT-005": 5.5,
+    "HW-HT-006": 7.0,
+    "HW-TI-007": 12.0,
+    "HW-TI-008": 4.5,
+    "HW-PA-009": 6.5,
+    "HW-PA-010": 5.5,
+    "HW-PL-011": 7.5,
+    "HW-PL-012": 4.0,
+    "HW-EL-013": 4.0,
+    "HW-EL-014": 5.0,
+    "HW-GA-015": 3.5,
+    "HW-GA-016": 6.0,
+    "HW-BM-017": 10.0,
+    "HW-BM-018": 6.0,
+    "HW-BM-019": 5.5,
+    "HW-BM-020": 7.5
+  }
+}
