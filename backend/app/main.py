@@ -6,6 +6,7 @@ from app import __version__
 from app.config import get_settings
 from app.db import close_client
 from app.routers import router as system_router
+from app.routers.inventory import router as inventory_router
 
 
 @asynccontextmanager
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(system_router, prefix=settings.api_prefix)
+    app.include_router(inventory_router, prefix=settings.api_prefix)
     return app
 
 

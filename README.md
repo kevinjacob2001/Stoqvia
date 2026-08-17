@@ -27,6 +27,14 @@ python -m scripts.init_db --reset
 
 cd ..
 PYTHONPATH=. backend/.venv/bin/python -m data.seed.seed_all
+
+# Run API
+cd backend
+uvicorn app.main:app --reload --app-dir .
+
+# Tests
+cd ..
+backend/.venv/bin/pytest
 ```
 
 Seed flow: JSON files in `data/seed/json/` → MongoDB.  
