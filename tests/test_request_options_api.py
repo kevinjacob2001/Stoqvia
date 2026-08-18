@@ -67,7 +67,8 @@ def test_cbd_drill_options_include_marion_and_supplier(client: TestClient) -> No
     donors = [store for group in payload["nearby_groups"] for store in group["stores"]]
     names = {row["store_name"] for row in donors}
     assert "Adelaide CBD" not in names
-    assert "Marion" in names
+    assert {"Marion", "Mile End", "Modbury"} <= names
+    assert len(donors) >= 2
     marion = next(row for row in donors if row["store_name"] == "Marion")
     assert marion["risk"] == "LOW"
     assert marion["safe_surplus"] >= 1

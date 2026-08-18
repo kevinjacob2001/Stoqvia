@@ -322,7 +322,7 @@
   {
     "store_id": "mile_end",
     "product_id": "HW-PT-001",
-    "on_hand": 175,
+    "on_hand": 240,
     "reserved": 2,
     "safety_stock": 50,
     "updated_at": "2026-08-17T00:00:00"
@@ -482,7 +482,7 @@
   {
     "store_id": "modbury",
     "product_id": "HW-PT-001",
-    "on_hand": 140,
+    "on_hand": 210,
     "reserved": 2,
     "safety_stock": 40,
     "updated_at": "2026-08-17T00:00:00"

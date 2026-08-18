@@ -169,4 +169,26 @@ def validate_dataset(db) -> ValidationReport:
         )
         report.add("demo_adelaide_usable_70", cbd_inv["on_hand"] - cbd_inv["reserved"] == 70)
 
+        mile = next((s for s in stores if s["name"] == "Mile End"), None)
+        modbury = next((s for s in stores if s["name"] == "Modbury"), None)
+        if mile and modbury:
+            mile_inv = next(
+                i for i in inventory if i["store_id"] == mile["_id"] and i["product_id"] == drill["_id"]
+            )
+            mod_inv = next(
+                i
+                for i in inventory
+                if i["store_id"] == modbury["_id"] and i["product_id"] == drill["_id"]
+            )
+            report.add(
+                "demo_mile_end_drill_surplus",
+                mile_inv["on_hand"] == 240 and mile_inv["reserved"] == 2,
+                f"on_hand={mile_inv['on_hand']}",
+            )
+            report.add(
+                "demo_modbury_drill_surplus",
+                mod_inv["on_hand"] == 210 and mod_inv["reserved"] == 2,
+                f"on_hand={mod_inv['on_hand']}",
+            )
+
     return report
