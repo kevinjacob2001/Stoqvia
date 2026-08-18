@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchStoreForecasts, fetchStoreInventory, fetchStores } from "./api.ts";
+import { fetchMe, fetchStoreForecasts, fetchStoreInventory, login } from "./api.ts";
+import { clearToken, getToken, setToken } from "./auth.ts";
 import InventoryTable from "./sections/InventoryTable.tsx";
 import LoadError from "./sections/LoadError.tsx";
 import LoadingState from "./sections/LoadingState.tsx";
-import StoreList from "./sections/StoreList.tsx";
-import type { ForecastResponse, StoreInventoryResponse, StoreSummary } from "./types.ts";
+import LoginForm from "./sections/LoginForm.tsx";
+import StoreProfile from "./sections/StoreProfile.tsx";
+import type { ForecastResponse, MeResponse, StoreInventoryResponse } from "./types.ts";
 
 export default function App() {
-  const [stores, setStores] = useState<StoreSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [session, setSession] = useState<MeResponse | null>(null);
+  const [checkingSession, setCheckingSession] = useState(Boolean(getToken()));
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [inventory, setInventory] = useState<StoreInventoryResponse | null>(null);
   const [forecasts, setForecasts] = useState<Record<string, ForecastResponse>>({});
   const [error, setError] = useState<string | null>(null);
-  const [loadingStores, setLoadingStores] = useState(true);
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -22,25 +25,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setLoadingStores(true);
-    setError(null);
-    fetchStores()
-      .then((rows) => {
-        setStores(rows);
-        setSelectedId((current) => current ?? rows[0]?.store_id ?? null);
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoadingStores(false));
-  }, [reloadKey]);
-
-  useEffect(() => {
-    if (!selectedId) {
+    const token = getToken();
+    if (!token) {
+      setCheckingSession(false);
       return;
     }
-    setInventory(null);
-    setForecasts({});
+    setCheckingSession(true);
+    fetchMe()
+      .then((me) => setSession(me))
+      .catch(() => {
+        clearToken();
+        setSession(null);
+      })
+      .finally(() => setCheckingSession(false));
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setInventory(null);
+      setForecasts({});
+      return;
+    }
+    setError(null);
     setLoadingInventory(true);
-    Promise.all([fetchStoreInventory(selectedId), fetchStoreForecasts(selectedId)])
+    Promise.all([fetchStoreInventory(session.store_id), fetchStoreForecasts(session.store_id)])
       .then(([stock, forecastPayload]) => {
         setInventory(stock);
         const byProduct: Record<string, ForecastResponse> = {};
@@ -51,46 +59,89 @@ export default function App() {
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingInventory(false));
-  }, [selectedId, reloadKey]);
+  }, [session, reloadKey]);
 
-  return (
-    <div className="shell">
-      <header>
-        <h1>Stoqvia</h1>
-        <p>Inventory + 7-day forecast</p>
-      </header>
-      {renderBody()}
-    </div>
-  );
+  function handleLogin(username: string, password: string) {
+    setLoginError(null);
+    setSubmitting(true);
+    login(username, password)
+      .then((payload) => {
+        setToken(payload.token);
+        return fetchMe();
+      })
+      .then((me) => setSession(me))
+      .catch(() => setLoginError("Invalid username or password"))
+      .finally(() => setSubmitting(false));
+  }
 
-  function renderBody() {
-    if (loadingStores) {
-      return <LoadingState message="Loading stores…" />;
-    }
+  function handleLogout() {
+    clearToken();
+    setSession(null);
+    setInventory(null);
+    setForecasts({});
+    setError(null);
+    setLoginError(null);
+  }
 
-    if (error && stores.length === 0) {
-      return <LoadError message={error} onRetry={retry} />;
-    }
-
+  if (checkingSession) {
     return (
-      <div className="layout">
-        <StoreList stores={stores} selectedId={selectedId} onSelect={setSelectedId} />
-        {renderInventoryPanel()}
+      <div className="shell">
+        <header>
+          <h1>Stoqvia</h1>
+        </header>
+        <LoadingState message="Checking session…" />
       </div>
     );
   }
 
-  function renderInventoryPanel() {
-    if (error && stores.length > 0) {
+  if (!session) {
+    return (
+      <div className="shell">
+        <header>
+          <h1>Stoqvia</h1>
+          <p>Sign in to your store</p>
+        </header>
+        <LoginForm error={loginError} submitting={submitting} onSubmit={handleLogin} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="shell">
+      <header className="app-header">
+        <div>
+          <h1>Stoqvia</h1>
+          <p>
+            {session.store_name} · {session.username}
+          </p>
+        </div>
+        <button className="ghost-button" type="button" onClick={handleLogout}>
+          Log out
+        </button>
+      </header>
+      {renderHome(session)}
+    </div>
+  );
+
+  function renderHome(current: MeResponse) {
+    if (error) {
       return <LoadError message={error} onRetry={retry} />;
     }
     if (loadingInventory || !inventory) {
       return (
-        <section className="panel">
-          <LoadingState message="Loading inventory…" />
-        </section>
+        <div className="layout">
+          <StoreProfile session={current} />
+          <section className="panel">
+            <LoadingState message="Loading inventory…" />
+          </section>
+        </div>
       );
     }
-    return <InventoryTable inventory={inventory} forecasts={forecasts} />;
+    return (
+      <div className="layout">
+        <StoreProfile session={current} />
+        <InventoryTable inventory={inventory} forecasts={forecasts} />
+      </div>
+    );
   }
 }

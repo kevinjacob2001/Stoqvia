@@ -46,3 +46,17 @@ export type StoreForecastsResponse = {
   store_name: string;
   forecasts: ForecastResponse[];
 };
+
+export type LoginResponse = {
+  token: string;
+  store_id: string;
+  store_name: string;
+  username: string;
+};
+
+export type MeResponse = {
+  store_id: string;
+  store_name: string;
+  region: string;
+  username: string;
+};
