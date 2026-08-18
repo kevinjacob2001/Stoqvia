@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchStoreInventory, fetchStores } from "./api.ts";
+import { fetchStoreForecasts, fetchStoreInventory, fetchStores } from "./api.ts";
 import InventoryTable from "./sections/InventoryTable.tsx";
 import LoadError from "./sections/LoadError.tsx";
 import LoadingState from "./sections/LoadingState.tsx";
 import StoreList from "./sections/StoreList.tsx";
-import type { StoreInventoryResponse, StoreSummary } from "./types.ts";
+import type { ForecastResponse, StoreInventoryResponse, StoreSummary } from "./types.ts";
 
 export default function App() {
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inventory, setInventory] = useState<StoreInventoryResponse | null>(null);
+  const [forecasts, setForecasts] = useState<Record<string, ForecastResponse>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadingStores, setLoadingStores] = useState(true);
   const [loadingInventory, setLoadingInventory] = useState(false);
@@ -37,9 +38,17 @@ export default function App() {
       return;
     }
     setInventory(null);
+    setForecasts({});
     setLoadingInventory(true);
-    fetchStoreInventory(selectedId)
-      .then(setInventory)
+    Promise.all([fetchStoreInventory(selectedId), fetchStoreForecasts(selectedId)])
+      .then(([stock, forecastPayload]) => {
+        setInventory(stock);
+        const byProduct: Record<string, ForecastResponse> = {};
+        for (const row of forecastPayload.forecasts) {
+          byProduct[row.product_id] = row;
+        }
+        setForecasts(byProduct);
+      })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingInventory(false));
   }, [selectedId, reloadKey]);
@@ -48,7 +57,7 @@ export default function App() {
     <div className="shell">
       <header>
         <h1>Stoqvia</h1>
-        <p>Inventory view — Phase 1</p>
+        <p>Inventory + 7-day forecast</p>
       </header>
       {renderBody()}
     </div>
@@ -82,6 +91,6 @@ export default function App() {
         </section>
       );
     }
-    return <InventoryTable inventory={inventory} />;
+    return <InventoryTable inventory={inventory} forecasts={forecasts} />;
   }
 }

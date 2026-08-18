@@ -9,6 +9,7 @@ stoqvia/
 ├── backend/                 FastAPI + PyMongo
 ├── data/seed/json/          Source-of-truth seed data
 ├── frontend/                React (Vite)
+├── ml/                      LightGBM train + artifacts
 ├── docker-compose.yml
 └── README.md
 ```
@@ -31,6 +32,12 @@ PYTHONPATH=. backend/.venv/bin/python -m data.seed.seed_all
 # API
 cd backend
 uvicorn app.main:app --reload --app-dir .
+
+# Train LightGBM demand model (Phase 2b). Same forecast API as the weekday baseline.
+# macOS: brew install libomp
+# Fallback: FORECAST_MODEL=baseline
+cd ..
+PYTHONPATH=.:backend backend/.venv/bin/python -m ml.train
 
 # Frontend (separate terminal)
 cd frontend

@@ -1,4 +1,4 @@
-import type { StoreInventoryResponse, StoreSummary } from "./types.ts";
+import type { StoreForecastsResponse, StoreInventoryResponse, StoreSummary } from "./types.ts";
 
 const API_BASE = "/api/v1";
 
@@ -17,3 +17,8 @@ export function fetchStores(): Promise<StoreSummary[]> {
 export function fetchStoreInventory(storeId: string): Promise<StoreInventoryResponse> {
   return getJson<StoreInventoryResponse>(`/stores/${storeId}/inventory`);
 }
+
+export function fetchStoreForecasts(storeId: string): Promise<StoreForecastsResponse> {
+  return getJson<StoreForecastsResponse>(`/stores/${storeId}/forecasts`);
+}
+

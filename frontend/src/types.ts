@@ -26,3 +26,23 @@ export type StoreInventoryResponse = {
   item_count: number;
   items: InventoryItem[];
 };
+
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+
+export type ForecastResponse = {
+  store_id: string;
+  product_id: string;
+  sku: string;
+  current_usable_stock: number;
+  predicted_7d_demand: number;
+  safety_stock: number;
+  projected_available_stock: number;
+  predicted_shortage_qty: number;
+  risk: RiskLevel;
+};
+
+export type StoreForecastsResponse = {
+  store_id: string;
+  store_name: string;
+  forecasts: ForecastResponse[];
+};

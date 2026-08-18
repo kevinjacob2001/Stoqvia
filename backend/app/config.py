@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    forecast_model: str = Field(default="lightgbm", alias="FORECAST_MODEL")
+
 
 @lru_cache
 def get_settings() -> Settings:

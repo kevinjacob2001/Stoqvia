@@ -7,6 +7,7 @@ from app import __version__
 from app.config import get_settings
 from app.db import close_client
 from app.routers import router as system_router
+from app.routers.forecasts import router as forecast_router
 from app.routers.inventory import router as inventory_router
 
 
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(system_router, prefix=settings.api_prefix)
     app.include_router(inventory_router, prefix=settings.api_prefix)
+    app.include_router(forecast_router, prefix=settings.api_prefix)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list(),
