@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchMe, fetchMyTransfers, fetchRequestOptions, fetchStoreForecasts, fetchStoreInventory, login, createTransfer } from "./api.ts";
+import {
+  createTransfer,
+  fetchMe,
+  fetchMyTransfers,
+  fetchRequestOptions,
+  fetchStoreForecasts,
+  fetchStoreInventory,
+  login,
+} from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
 import InventoryTable from "./sections/InventoryTable.tsx";
 import LoadError from "./sections/LoadError.tsx";
 import LoadingState from "./sections/LoadingState.tsx";
 import LoginForm from "./sections/LoginForm.tsx";
 import RequestOptionsModal from "./sections/RequestOptionsModal.tsx";
-import StoreProfile from "./sections/StoreProfile.tsx";
+import StoreNav, { type HomeView } from "./sections/StoreNav.tsx";
 import TransferTables from "./sections/TransferTables.tsx";
 import type {
   ForecastResponse,
@@ -32,6 +40,7 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [transfers, setTransfers] = useState<MyTransfersResponse | null>(null);
+  const [view, setView] = useState<HomeView>("inventory");
 
   const retry = useCallback(() => {
     setError(null);
@@ -58,6 +67,7 @@ export default function App() {
     if (!session) {
       setInventory(null);
       setForecasts({});
+      setTransfers(null);
       return;
     }
     setError(null);
@@ -88,7 +98,10 @@ export default function App() {
         setToken(payload.token);
         return fetchMe();
       })
-      .then((me) => setSession(me))
+      .then((me) => {
+        setView("inventory");
+        setSession(me);
+      })
       .catch(() => setLoginError("Invalid username or password"))
       .finally(() => setSubmitting(false));
   }
@@ -104,6 +117,7 @@ export default function App() {
     setOptionsError(null);
     setSendError(null);
     setTransfers(null);
+    setView("inventory");
   }
 
   function handleRequestProduct(productId: string) {
@@ -126,6 +140,7 @@ export default function App() {
     createTransfer(options.product_id, storeIds)
       .then(() => {
         setOptions(null);
+        setView("transferred");
         setReloadKey((key) => key + 1);
       })
       .catch((err: Error) => setSendError(err.message))
@@ -160,9 +175,7 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>Stoqvia</h1>
-          <p>
-            {session.store_name} · {session.username}
-          </p>
+          <p>{session.store_name}</p>
         </div>
         <button className="ghost-button" type="button" onClick={handleLogout}>
           Log out
@@ -172,7 +185,7 @@ export default function App() {
       {loadingOptions ? (
         <div className="modal-backdrop">
           <section className="panel modal-card">
-            <LoadingState message="Loading request options…" />
+            <LoadingState message="Loading options…" />
           </section>
         </div>
       ) : null}
@@ -199,35 +212,58 @@ export default function App() {
   );
 
   function renderHome(current: MeResponse) {
+    const incomingCount = transfers?.incoming_count ?? 0;
+    const outgoingCount = transfers?.outgoing_count ?? 0;
+    const nav = (
+      <StoreNav
+        session={current}
+        view={view}
+        incomingCount={incomingCount}
+        outgoingCount={outgoingCount}
+        onChangeView={setView}
+      />
+    );
+
     if (error) {
-      return <LoadError message={error} onRetry={retry} />;
+      return (
+        <div className="layout">
+          {nav}
+          <LoadError message={error} onRetry={retry} />
+        </div>
+      );
     }
     if (loadingInventory || !inventory) {
       return (
         <div className="layout">
-          <StoreProfile session={current} />
+          {nav}
           <section className="panel">
-            <LoadingState message="Loading inventory…" />
+            <LoadingState message="Loading…" />
           </section>
         </div>
       );
     }
+
+    let main = (
+      <InventoryTable
+        inventory={inventory}
+        forecasts={forecasts}
+        onRequestProduct={handleRequestProduct}
+      />
+    );
+    if (view === "received" || view === "transferred") {
+      main = (
+        <TransferTables
+          mode={view}
+          outgoing={transfers?.outgoing ?? []}
+          incoming={transfers?.incoming ?? []}
+        />
+      );
+    }
+
     return (
       <div className="layout">
-        <StoreProfile session={current} />
-        <div className="home-main">
-          <InventoryTable
-            inventory={inventory}
-            forecasts={forecasts}
-            onRequestProduct={handleRequestProduct}
-          />
-          <TransferTables
-            outgoing={transfers?.outgoing ?? []}
-            incoming={transfers?.incoming ?? []}
-            outgoingCount={transfers?.outgoing_count ?? 0}
-            incomingCount={transfers?.incoming_count ?? 0}
-          />
-        </div>
+        {nav}
+        {main}
       </div>
     );
   }

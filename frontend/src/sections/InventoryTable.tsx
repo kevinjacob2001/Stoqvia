@@ -13,10 +13,7 @@ export default function InventoryTable({
 }: InventoryTableProps) {
   return (
     <section className="panel">
-      <h2>
-        {inventory.store_name}
-        <small> · {inventory.item_count} products</small>
-      </h2>
+      <h2>Inventory</h2>
       <table>
         <thead>
           <tr>
