@@ -1,4 +1,4 @@
-"""MongoDB collection names, validators, and indexes (MVP: 8 collections)."""
+"""MongoDB collection names, validators, and indexes."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ COLLECTIONS: tuple[str, ...] = (
     "supplier_products",
     "purchase_orders",
     "stock_transfers",
+    "store_users",
 )
 
 RETIRED_COLLECTIONS: tuple[str, ...] = (
@@ -210,6 +211,19 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
             "additionalProperties": False,
         }
     },
+    "store_users": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "required": ["store_id", "username", "password_hash"],
+            "properties": {
+                "_id": _object_id(),
+                "store_id": _object_id(),
+                "username": _string(),
+                "password_hash": _string(),
+            },
+            "additionalProperties": False,
+        }
+    },
 }
 
 
@@ -256,5 +270,9 @@ COLLECTION_INDEXES: dict[str, list[tuple[list[tuple[str, Any]], dict[str, Any]]]
         ([("from_store_id", 1), ("status", 1)], {"name": "from_status"}),
         ([("to_store_id", 1), ("status", 1)], {"name": "to_status"}),
         ([("product_id", 1), ("expected_date", 1)], {"name": "product_expected"}),
+    ],
+    "store_users": [
+        ([("username", 1)], {"unique": True, "name": "uniq_username"}),
+        ([("store_id", 1)], {"unique": True, "name": "uniq_store_admin"}),
     ],
 }

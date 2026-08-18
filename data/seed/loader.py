@@ -12,6 +12,8 @@ from typing import Any, Dict, Iterable, List
 from bson import ObjectId
 from bson.decimal128 import Decimal128
 
+from app.services.passwords import hash_password
+
 JSON_DIR = Path(__file__).resolve().parent / "json"
 
 MONEY_FIELDS = frozenset({"unit_cost", "sell_price"})
@@ -75,6 +77,9 @@ def to_mongo_doc(raw: dict, id_map: Dict[str, ObjectId]) -> dict:
 
     for key, value in raw.items():
         if key == "id":
+            continue
+        if key == "password":
+            doc["password_hash"] = hash_password(str(value))
             continue
         if key in REF_FIELDS:
             ref = str(value)

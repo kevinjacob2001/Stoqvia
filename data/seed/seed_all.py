@@ -33,6 +33,7 @@ from data.seed.validation import validate_dataset
 LOAD_ORDER = (
     ("products", "products.json", False),
     ("stores", "stores.json", False),
+    ("store_users", "store_users.json", False),
     ("suppliers", "suppliers.json", False),
     ("supplier_products", "supplier_products.json", False),
     ("inventory", "inventory.json", False),
@@ -106,7 +107,7 @@ def seed(reset: bool = True) -> Dict[str, int]:
     report.print_report()
 
     print("=== SAMPLE DOCUMENTS ===")
-    for name in ("products", "stores", "inventory", "sales_daily", "suppliers"):
+    for name in ("products", "stores", "store_users", "inventory", "sales_daily", "suppliers"):
         sample = db[name].find_one()
         print(f"\n{name}:")
         print(json.dumps(_jsonable(sample), indent=2))
@@ -127,6 +128,14 @@ def seed(reset: bool = True) -> Dict[str, int]:
                 f"{store['name']}: on_hand={inv['on_hand']} reserved={inv['reserved']} "
                 f"usable={usable} safety={inv['safety_stock']}"
             )
+
+    user = db.store_users.find_one({"username": "admin.cbd"})
+    if user is not None:
+        print(
+            f"\nstore admin sample: username={user['username']} "
+            f"has_password_hash={bool(user.get('password_hash'))} "
+            f"plaintext_password_stored={'password' in user}"
+        )
 
     if not report.ok:
         raise SystemExit(1)

@@ -120,6 +120,16 @@ class StockTransfer(StockTransferCreate):
     id: str = Field(alias="_id")
 
 
+class StoreUserCreate(MongoModel):
+    store_id: str
+    username: str = Field(min_length=1)
+    password_hash: str = Field(min_length=1)
+
+
+class StoreUser(StoreUserCreate):
+    id: str = Field(alias="_id")
+
+
 class CollectionInfo(BaseModel):
     name: str
     count: int

@@ -8,6 +8,7 @@ from typing import Any
 from bson.decimal128 import Decimal128
 
 EXPECTED_STORE_NAMES = ("Adelaide CBD", "Marion", "Mile End", "Modbury")
+EXPECTED_USERNAMES = ("admin.cbd", "admin.marion", "admin.mileend", "admin.modbury")
 DEMO_DRILL_SKU = "HW-PT-001"
 
 
@@ -48,6 +49,7 @@ def validate_dataset(db) -> ValidationReport:
     sales = list(db.sales_daily.find())
     pos = list(db.purchase_orders.find())
     transfers = list(db.stock_transfers.find())
+    users = list(db.store_users.find())
 
     product_ids = {p["_id"] for p in products}
     store_ids = {s["_id"] for s in stores}
@@ -123,6 +125,19 @@ def validate_dataset(db) -> ValidationReport:
         or t["qty"] < 1
     ]
     report.add("stock_transfers_valid", not bad_xfer, f"bad={len(bad_xfer)}")
+
+    report.add("store_users_count_4", len(users) == 4, f"count={len(users)}")
+    report.add(
+        "store_users_expected_usernames",
+        {u["username"] for u in users} == set(EXPECTED_USERNAMES),
+        f"usernames={sorted(u['username'] for u in users)}",
+    )
+    report.add("store_users_one_per_store", {u["store_id"] for u in users} == store_ids)
+    report.add("store_users_valid_store_ids", all(u["store_id"] in store_ids for u in users))
+    report.add(
+        "store_users_hashed_not_plaintext",
+        all("password_hash" in u and "password" not in u for u in users),
+    )
 
     report.add("sales_non_negative", all(s["units_sold"] >= 0 for s in sales))
     report.add(

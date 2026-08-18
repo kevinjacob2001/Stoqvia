@@ -1,0 +1,26 @@
+[
+  {
+    "id": "user_adelaide_cbd",
+    "store_id": "adelaide_cbd",
+    "username": "admin.cbd",
+    "password": "cbd123"
+  },
+  {
+    "id": "user_marion",
+    "store_id": "marion",
+    "username": "admin.marion",
+    "password": "marion123"
+  },
+  {
+    "id": "user_mile_end",
+    "store_id": "mile_end",
+    "username": "admin.mileend",
+    "password": "mileend123"
+  },
+  {
+    "id": "user_modbury",
+    "store_id": "modbury",
+    "username": "admin.modbury",
+    "password": "modbury123"
+  }
+]

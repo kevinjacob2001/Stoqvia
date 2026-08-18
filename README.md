@@ -60,3 +60,4 @@ Seed flow: JSON files in `data/seed/json/` → MongoDB.
 | `supplier_products` | `supplier_products.json` |
 | `purchase_orders` | `purchase_orders.json` |
 | `stock_transfers` | `stock_transfers.json` |
+| `store_users` | `store_users.json` (password hashed on load) |
