@@ -118,11 +118,15 @@ def validate_dataset(db) -> ValidationReport:
     bad_xfer = [
         t
         for t in transfers
-        if t["from_store_id"] not in store_ids
-        or t["to_store_id"] not in store_ids
-        or t["product_id"] not in product_ids
-        or t["from_store_id"] == t["to_store_id"]
-        or t["qty"] < 1
+        if t.get("requester_store_id") not in store_ids
+        or t.get("product_id") not in product_ids
+        or t.get("qty", 0) < 1
+        or not t.get("invited")
+        or any(
+            invite.get("store_id") not in store_ids
+            or invite.get("store_id") == t.get("requester_store_id")
+            for invite in t.get("invited", [])
+        )
     ]
     report.add("stock_transfers_valid", not bad_xfer, f"bad={len(bad_xfer)}")
 

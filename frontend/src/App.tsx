@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchMe, fetchRequestOptions, fetchStoreForecasts, fetchStoreInventory, login } from "./api.ts";
+import { fetchMe, fetchMyTransfers, fetchRequestOptions, fetchStoreForecasts, fetchStoreInventory, login, createTransfer } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
 import InventoryTable from "./sections/InventoryTable.tsx";
 import LoadError from "./sections/LoadError.tsx";
@@ -7,9 +7,11 @@ import LoadingState from "./sections/LoadingState.tsx";
 import LoginForm from "./sections/LoginForm.tsx";
 import RequestOptionsModal from "./sections/RequestOptionsModal.tsx";
 import StoreProfile from "./sections/StoreProfile.tsx";
+import TransferTables from "./sections/TransferTables.tsx";
 import type {
   ForecastResponse,
   MeResponse,
+  MyTransfersResponse,
   RequestOptionsResponse,
   StoreInventoryResponse,
 } from "./types.ts";
@@ -27,6 +29,9 @@ export default function App() {
   const [options, setOptions] = useState<RequestOptionsResponse | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [transfers, setTransfers] = useState<MyTransfersResponse | null>(null);
 
   const retry = useCallback(() => {
     setError(null);
@@ -57,14 +62,19 @@ export default function App() {
     }
     setError(null);
     setLoadingInventory(true);
-    Promise.all([fetchStoreInventory(session.store_id), fetchStoreForecasts(session.store_id)])
-      .then(([stock, forecastPayload]) => {
+    Promise.all([
+      fetchStoreInventory(session.store_id),
+      fetchStoreForecasts(session.store_id),
+      fetchMyTransfers(),
+    ])
+      .then(([stock, forecastPayload, transferPayload]) => {
         setInventory(stock);
         const byProduct: Record<string, ForecastResponse> = {};
         for (const row of forecastPayload.forecasts) {
           byProduct[row.product_id] = row;
         }
         setForecasts(byProduct);
+        setTransfers(transferPayload);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingInventory(false));
@@ -92,16 +102,34 @@ export default function App() {
     setLoginError(null);
     setOptions(null);
     setOptionsError(null);
+    setSendError(null);
+    setTransfers(null);
   }
 
   function handleRequestProduct(productId: string) {
     setOptionsError(null);
+    setSendError(null);
     setOptions(null);
     setLoadingOptions(true);
     fetchRequestOptions(productId)
       .then(setOptions)
       .catch((err: Error) => setOptionsError(err.message))
       .finally(() => setLoadingOptions(false));
+  }
+
+  function handleSendTransfer(storeIds: string[]) {
+    if (!options) {
+      return;
+    }
+    setSendError(null);
+    setSending(true);
+    createTransfer(options.product_id, storeIds)
+      .then(() => {
+        setOptions(null);
+        setReloadKey((key) => key + 1);
+      })
+      .catch((err: Error) => setSendError(err.message))
+      .finally(() => setSending(false));
   }
 
   if (checkingSession) {
@@ -158,7 +186,15 @@ export default function App() {
           </section>
         </div>
       ) : null}
-      {options ? <RequestOptionsModal options={options} onClose={() => setOptions(null)} /> : null}
+      {options ? (
+        <RequestOptionsModal
+          options={options}
+          sending={sending}
+          sendError={sendError}
+          onClose={() => setOptions(null)}
+          onSend={handleSendTransfer}
+        />
+      ) : null}
     </div>
   );
 
@@ -179,11 +215,19 @@ export default function App() {
     return (
       <div className="layout">
         <StoreProfile session={current} />
-        <InventoryTable
-          inventory={inventory}
-          forecasts={forecasts}
-          onRequestProduct={handleRequestProduct}
-        />
+        <div className="home-main">
+          <InventoryTable
+            inventory={inventory}
+            forecasts={forecasts}
+            onRequestProduct={handleRequestProduct}
+          />
+          <TransferTables
+            outgoing={transfers?.outgoing ?? []}
+            incoming={transfers?.incoming ?? []}
+            outgoingCount={transfers?.outgoing_count ?? 0}
+            incomingCount={transfers?.incoming_count ?? 0}
+          />
+        </div>
       </div>
     );
   }

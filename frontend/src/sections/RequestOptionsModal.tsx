@@ -3,10 +3,19 @@ import type { RequestOptionsResponse } from "../types.ts";
 
 type RequestOptionsModalProps = {
   options: RequestOptionsResponse;
+  sending: boolean;
+  sendError: string | null;
   onClose: () => void;
+  onSend: (storeIds: string[]) => void;
 };
 
-export default function RequestOptionsModal({ options, onClose }: RequestOptionsModalProps) {
+export default function RequestOptionsModal({
+  options,
+  sending,
+  sendError,
+  onClose,
+  onSend,
+}: RequestOptionsModalProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
   function toggle(storeId: string) {
@@ -57,10 +66,16 @@ export default function RequestOptionsModal({ options, onClose }: RequestOptions
               </div>
             ))
           )}
-          <button className="retry-button" disabled type="button">
-            Send transfer request
+          <button
+            className="retry-button"
+            disabled={selected.length === 0 || sending}
+            type="button"
+            onClick={() => onSend(selected)}
+          >
+            {sending ? "Sending…" : "Send transfer request"}
           </button>
-          <p className="hint">Sending starts in the next phase. Tick stores to preview who would be asked.</p>
+          {sendError ? <p className="error">{sendError}</p> : null}
+          <p className="hint">Only ticked stores receive this request. You cannot take it back.</p>
         </section>
 
         <section className="modal-section supplier-section">

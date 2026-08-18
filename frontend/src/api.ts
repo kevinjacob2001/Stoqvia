@@ -2,6 +2,8 @@ import { getToken } from "./auth.ts";
 import type {
   LoginResponse,
   MeResponse,
+  MyTransfersResponse,
+  OutgoingTransfer,
   RequestOptionsResponse,
   StoreForecastsResponse,
   StoreInventoryResponse,
@@ -47,4 +49,18 @@ export function fetchStoreForecasts(storeId: string): Promise<StoreForecastsResp
 
 export function fetchRequestOptions(productId: string): Promise<RequestOptionsResponse> {
   return requestJson<RequestOptionsResponse>(`/me/products/${productId}/request-options`);
+}
+
+export function fetchMyTransfers(): Promise<MyTransfersResponse> {
+  return requestJson<MyTransfersResponse>("/me/transfers");
+}
+
+export function createTransfer(
+  productId: string,
+  donorStoreIds: string[],
+): Promise<OutgoingTransfer> {
+  return requestJson<OutgoingTransfer>("/me/transfers", {
+    method: "POST",
+    body: JSON.stringify({ product_id: productId, donor_store_ids: donorStoreIds }),
+  });
 }

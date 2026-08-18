@@ -89,6 +89,18 @@ header p {
   gap: 20px;
 }
 
+.home-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.transfer-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
 .panel {
   background: #fff;
   border: 1px solid #d9e1ea;

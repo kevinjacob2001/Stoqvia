@@ -103,3 +103,37 @@ export type RequestOptionsResponse = {
   nearby_groups: RadiusGroup[];
   supplier: SupplierOption | null;
 };
+
+export type InviteStatus = {
+  store_id: string;
+  store_name: string;
+  status: string;
+};
+
+export type OutgoingTransfer = {
+  transfer_id: string;
+  sku: string;
+  product_name: string;
+  qty: number;
+  status: string;
+  created_at: string;
+  invited: InviteStatus[];
+};
+
+export type IncomingTransfer = {
+  transfer_id: string;
+  sku: string;
+  product_name: string;
+  qty: number;
+  requester_store_id: string;
+  requester_store_name: string;
+  status: string;
+  created_at: string;
+};
+
+export type MyTransfersResponse = {
+  outgoing: OutgoingTransfer[];
+  incoming: IncomingTransfer[];
+  outgoing_count: number;
+  incoming_count: number;
+};

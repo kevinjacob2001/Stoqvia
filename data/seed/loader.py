@@ -17,7 +17,7 @@ from app.services.passwords import hash_password
 JSON_DIR = Path(__file__).resolve().parent / "json"
 
 MONEY_FIELDS = frozenset({"unit_cost", "sell_price"})
-DATE_FIELDS = frozenset({"date", "expected_date", "updated_at"})
+DATE_FIELDS = frozenset({"date", "expected_date", "updated_at", "created_at"})
 REF_FIELDS = frozenset(
     {
         "store_id",
@@ -25,6 +25,7 @@ REF_FIELDS = frozenset(
         "supplier_id",
         "from_store_id",
         "to_store_id",
+        "requester_store_id",
     }
 )
 

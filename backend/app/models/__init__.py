@@ -109,11 +109,11 @@ class PurchaseOrder(PurchaseOrderCreate):
 
 class StockTransferCreate(MongoModel):
     product_id: str
-    from_store_id: str
-    to_store_id: str
+    requester_store_id: str
     qty: int = Field(ge=1)
-    expected_date: date
     status: str = Field(min_length=1)
+    created_at: datetime
+    invited: List[dict]
 
 
 class StockTransfer(StockTransferCreate):

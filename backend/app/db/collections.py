@@ -193,20 +193,32 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
             "bsonType": "object",
             "required": [
                 "product_id",
-                "from_store_id",
-                "to_store_id",
+                "requester_store_id",
                 "qty",
-                "expected_date",
                 "status",
+                "created_at",
+                "invited",
             ],
             "properties": {
                 "_id": _object_id(),
                 "product_id": _object_id(),
-                "from_store_id": _object_id(),
-                "to_store_id": _object_id(),
+                "requester_store_id": _object_id(),
                 "qty": _int_min(1),
-                "expected_date": _date(),
                 "status": _string(),
+                "created_at": _date(),
+                "invited": {
+                    "bsonType": "array",
+                    "minItems": 1,
+                    "items": {
+                        "bsonType": "object",
+                        "required": ["store_id", "status"],
+                        "properties": {
+                            "store_id": _object_id(),
+                            "status": _string(),
+                        },
+                        "additionalProperties": False,
+                    },
+                },
             },
             "additionalProperties": False,
         }
@@ -267,9 +279,11 @@ COLLECTION_INDEXES: dict[str, list[tuple[list[tuple[str, Any]], dict[str, Any]]]
         ([("product_id", 1)], {"name": "by_product"}),
     ],
     "stock_transfers": [
-        ([("from_store_id", 1), ("status", 1)], {"name": "from_status"}),
-        ([("to_store_id", 1), ("status", 1)], {"name": "to_status"}),
-        ([("product_id", 1), ("expected_date", 1)], {"name": "product_expected"}),
+        (
+            [("requester_store_id", 1), ("product_id", 1), ("status", 1)],
+            {"name": "requester_product_status"},
+        ),
+        ([("invited.store_id", 1), ("status", 1)], {"name": "invited_status"}),
     ],
     "store_users": [
         ([("username", 1)], {"unique": True, "name": "uniq_username"}),
