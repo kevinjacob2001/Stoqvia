@@ -2,6 +2,7 @@ import { getToken } from "./auth.ts";
 import type {
   LoginResponse,
   MeResponse,
+  RequestOptionsResponse,
   StoreForecastsResponse,
   StoreInventoryResponse,
 } from "./types.ts";
@@ -42,4 +43,8 @@ export function fetchStoreInventory(storeId: string): Promise<StoreInventoryResp
 
 export function fetchStoreForecasts(storeId: string): Promise<StoreForecastsResponse> {
   return requestJson<StoreForecastsResponse>(`/stores/${storeId}/forecasts`);
+}
+
+export function fetchRequestOptions(productId: string): Promise<RequestOptionsResponse> {
+  return requestJson<RequestOptionsResponse>(`/me/products/${productId}/request-options`);
 }

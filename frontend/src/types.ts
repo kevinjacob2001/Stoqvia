@@ -60,3 +60,46 @@ export type MeResponse = {
   region: string;
   username: string;
 };
+
+export type DonorOption = {
+  store_id: string;
+  store_name: string;
+  region: string;
+  distance_km: number;
+  radius_band: string;
+  usable_stock: number;
+  predicted_7d_demand: number;
+  safety_stock: number;
+  safe_surplus: number;
+  risk: RiskLevel;
+  recommended_qty: number;
+};
+
+export type RadiusGroup = {
+  band: string;
+  label: string;
+  stores: DonorOption[];
+};
+
+export type SupplierOption = {
+  supplier_id: string;
+  name: string;
+  lead_days: number;
+  min_order_qty: number;
+  available_qty: number;
+  unit_cost: number;
+  recommended_qty: number;
+};
+
+export type RequestOptionsResponse = {
+  store_id: string;
+  store_name: string;
+  product_id: string;
+  sku: string;
+  product_name: string;
+  risk: RiskLevel;
+  shortage_qty: number;
+  requested_qty: number;
+  nearby_groups: RadiusGroup[];
+  supplier: SupplierOption | null;
+};

@@ -181,3 +181,67 @@ td {
   padding: 8px 12px;
   cursor: pointer;
 }
+
+.retry-button:disabled,
+.ghost-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 32, 51, 0.35);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow: auto;
+}
+
+.modal-card {
+  width: min(640px, 100%);
+}
+
+.modal-card h2 {
+  margin: 0 0 16px;
+}
+
+.modal-section {
+  margin-bottom: 20px;
+}
+
+.modal-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.band-label {
+  margin: 8px 0 6px;
+  font-size: 0.8rem;
+  color: #5b6b7c;
+  font-weight: 600;
+}
+
+.donor-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.donor-row small {
+  display: block;
+  color: #667788;
+}
+
+.supplier-section {
+  padding-top: 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.hint {
+  margin: 8px 0 0;
+  color: #5b6b7c;
+  font-size: 0.85rem;
+}

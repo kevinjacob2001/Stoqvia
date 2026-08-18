@@ -42,3 +42,8 @@ def classify_risk(predicted_shortage_qty: int, projected_available_stock: int, s
 def calculate_shortage(usable_stock: int, predicted_7d_demand: int, safety_stock: int) -> int:
     """Units short after covering 7-day demand AND remaining at safety stock."""
     return max(0, predicted_7d_demand + safety_stock - usable_stock)
+
+
+def calculate_safe_surplus(usable_stock: int, predicted_7d_demand: int, safety_stock: int) -> int:
+    """Units a donor can spare after covering its own 7-day demand and safety stock."""
+    return usable_stock - predicted_7d_demand - safety_stock

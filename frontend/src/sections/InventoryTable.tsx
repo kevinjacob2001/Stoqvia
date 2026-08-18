@@ -3,9 +3,14 @@ import type { ForecastResponse, StoreInventoryResponse } from "../types.ts";
 type InventoryTableProps = {
   inventory: StoreInventoryResponse;
   forecasts: Record<string, ForecastResponse>;
+  onRequestProduct: (productId: string) => void;
 };
 
-export default function InventoryTable({ inventory, forecasts }: InventoryTableProps) {
+export default function InventoryTable({
+  inventory,
+  forecasts,
+  onRequestProduct,
+}: InventoryTableProps) {
   return (
     <section className="panel">
       <h2>
@@ -23,6 +28,7 @@ export default function InventoryTable({ inventory, forecasts }: InventoryTableP
             <th className="num">Safety</th>
             <th className="num">Shortage</th>
             <th>Risk</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -40,6 +46,17 @@ export default function InventoryTable({ inventory, forecasts }: InventoryTableP
                 <td className="num">{forecast?.predicted_shortage_qty ?? "—"}</td>
                 <td>
                   {risk ? <span className={`risk risk-${risk.toLowerCase()}`}>{risk}</span> : "—"}
+                </td>
+                <td>
+                  {risk === "HIGH" ? (
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      onClick={() => onRequestProduct(item.product_id)}
+                    >
+                      Request
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             );

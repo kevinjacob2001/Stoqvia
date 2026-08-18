@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchMe, fetchStoreForecasts, fetchStoreInventory, login } from "./api.ts";
+import { fetchMe, fetchRequestOptions, fetchStoreForecasts, fetchStoreInventory, login } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
 import InventoryTable from "./sections/InventoryTable.tsx";
 import LoadError from "./sections/LoadError.tsx";
 import LoadingState from "./sections/LoadingState.tsx";
 import LoginForm from "./sections/LoginForm.tsx";
+import RequestOptionsModal from "./sections/RequestOptionsModal.tsx";
 import StoreProfile from "./sections/StoreProfile.tsx";
-import type { ForecastResponse, MeResponse, StoreInventoryResponse } from "./types.ts";
+import type {
+  ForecastResponse,
+  MeResponse,
+  RequestOptionsResponse,
+  StoreInventoryResponse,
+} from "./types.ts";
 
 export default function App() {
   const [session, setSession] = useState<MeResponse | null>(null);
@@ -18,6 +24,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [options, setOptions] = useState<RequestOptionsResponse | null>(null);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [loadingOptions, setLoadingOptions] = useState(false);
 
   const retry = useCallback(() => {
     setError(null);
@@ -81,6 +90,18 @@ export default function App() {
     setForecasts({});
     setError(null);
     setLoginError(null);
+    setOptions(null);
+    setOptionsError(null);
+  }
+
+  function handleRequestProduct(productId: string) {
+    setOptionsError(null);
+    setOptions(null);
+    setLoadingOptions(true);
+    fetchRequestOptions(productId)
+      .then(setOptions)
+      .catch((err: Error) => setOptionsError(err.message))
+      .finally(() => setLoadingOptions(false));
   }
 
   if (checkingSession) {
@@ -120,6 +141,24 @@ export default function App() {
         </button>
       </header>
       {renderHome(session)}
+      {loadingOptions ? (
+        <div className="modal-backdrop">
+          <section className="panel modal-card">
+            <LoadingState message="Loading request options…" />
+          </section>
+        </div>
+      ) : null}
+      {optionsError ? (
+        <div className="modal-backdrop" onClick={() => setOptionsError(null)} role="presentation">
+          <section className="panel modal-card" onClick={(event) => event.stopPropagation()}>
+            <p className="error">{optionsError}</p>
+            <button className="ghost-button" type="button" onClick={() => setOptionsError(null)}>
+              Close
+            </button>
+          </section>
+        </div>
+      ) : null}
+      {options ? <RequestOptionsModal options={options} onClose={() => setOptions(null)} /> : null}
     </div>
   );
 
@@ -140,7 +179,11 @@ export default function App() {
     return (
       <div className="layout">
         <StoreProfile session={current} />
-        <InventoryTable inventory={inventory} forecasts={forecasts} />
+        <InventoryTable
+          inventory={inventory}
+          forecasts={forecasts}
+          onRequestProduct={handleRequestProduct}
+        />
       </div>
     );
   }

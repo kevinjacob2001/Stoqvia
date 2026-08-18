@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from app.models.forecast import calculate_shortage, classify_risk
+from app.models.forecast import calculate_safe_surplus, calculate_shortage, classify_risk
 from app.services.forecast_service import average_by_weekday, predict_horizon
 
 
@@ -11,6 +11,10 @@ def test_shortage_includes_safety_stock() -> None:
 
 def test_shortage_zero_when_cover_includes_safety() -> None:
     assert calculate_shortage(252, 100, 25) == 0
+
+
+def test_safe_surplus_is_stock_minus_forecast_and_safety() -> None:
+    assert calculate_safe_surplus(252, 100, 25) == 127
 
 
 def test_risk_high_when_shortage() -> None:
