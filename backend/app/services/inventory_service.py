@@ -58,7 +58,6 @@ def _item(
         reserved=reserved,
         usable_stock=calculate_usable_stock(on_hand, reserved),
         safety_stock=int(inventory["safety_stock"]),
-        updated_at=inventory["updated_at"],
     )
 
 
@@ -69,9 +68,6 @@ def list_stores(db: Optional[Database] = None) -> List[StoreSummary]:
         StoreSummary(
             store_id=str(store["_id"]),
             name=store["name"],
-            region=store["region"],
-            latitude=float(store["latitude"]),
-            longitude=float(store["longitude"]),
         )
         for store in stores
     ]
@@ -103,7 +99,6 @@ def get_store_inventory(
     return StoreInventoryResponse(
         store_id=str(store["_id"]),
         store_name=store["name"],
-        region=store["region"],
         item_count=len(items),
         items=items,
     )

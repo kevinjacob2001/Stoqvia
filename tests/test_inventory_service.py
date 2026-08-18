@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pytest
 
 from app.services.inventory_service import calculate_usable_stock
@@ -37,6 +35,5 @@ def test_inventory_item_usable_matches_formula() -> None:
         reserved=10,
         usable_stock=70,
         safety_stock=20,
-        updated_at=datetime(2026, 8, 17),
     )
     assert item.usable_stock == calculate_usable_stock(item.on_hand, item.reserved)

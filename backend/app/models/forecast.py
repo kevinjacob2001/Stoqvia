@@ -1,5 +1,4 @@
-from datetime import date
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -15,14 +14,9 @@ class ForecastResponse(BaseModel):
     current_usable_stock: int = Field(ge=0)
     predicted_7d_demand: int = Field(ge=0)
     safety_stock: int = Field(ge=0)
-    projected_available_stock: int
     predicted_shortage_qty: int = Field(ge=0)
     risk: RiskLevel
     method: str
-    lookback_days: int
-    horizon_start: date
-    horizon_end: date
-    shortage_includes_safety_stock: bool = True
 
 
 class StoreForecastsResponse(BaseModel):

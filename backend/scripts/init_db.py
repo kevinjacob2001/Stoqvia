@@ -66,8 +66,8 @@ def ensure_collections(drop_existing: bool = False) -> None:
 
 def _ensure_indexes(db, name: str) -> None:
     coll = db[name]
+    wanted = {"_id_"}
     for keys, options in COLLECTION_INDEXES[name]:
-        # Convert ("geo", "2dsphere") style keys
         index_keys = []
         for field, direction in keys:
             if direction == "2dsphere":
@@ -75,6 +75,10 @@ def _ensure_indexes(db, name: str) -> None:
             else:
                 index_keys.append((field, ASCENDING if direction == 1 else direction))
         coll.create_index(index_keys, **options)
+        wanted.add(options["name"])
+    for extra in set(coll.index_information()) - wanted:
+        coll.drop_index(extra)
+        print(f"dropped  {name} index {extra}")
     print(f"indexes  {name}: {coll.index_information().keys()}")
 
 

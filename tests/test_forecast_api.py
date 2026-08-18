@@ -59,7 +59,6 @@ def test_adelaide_drill_forecast_is_high_risk(client: TestClient) -> None:
     assert payload["sku"] == "HW-PT-001"
     assert payload["current_usable_stock"] == 70
     assert payload["safety_stock"] == 20
-    assert payload["shortage_includes_safety_stock"] is True
     assert payload["method"] in {"lightgbm_recursive_7d", "dow_28d_baseline"}
     assert payload["predicted_7d_demand"] > payload["current_usable_stock"]
     assert payload["predicted_shortage_qty"] > 0

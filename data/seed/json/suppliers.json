@@ -3,21 +3,18 @@
     "id": "barossa_bulk",
     "name": "Barossa Bulk Tools",
     "approved": true,
-    "default_lead_days": 10,
     "min_order_qty": 20
   },
   {
     "id": "southern_precision",
     "name": "Southern Precision Supply",
     "approved": true,
-    "default_lead_days": 4,
     "min_order_qty": 10
   },
   {
     "id": "gulf_fast",
     "name": "Gulf Fast Logistics",
     "approved": false,
-    "default_lead_days": 3,
     "min_order_qty": 15
   }
 ]

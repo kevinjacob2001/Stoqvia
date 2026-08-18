@@ -73,7 +73,6 @@ def test_me_with_valid_token(client: TestClient) -> None:
     payload = response.json()
     assert payload["username"] == "admin.marion"
     assert payload["store_name"] == "Marion"
-    assert payload["region"] == "Southern Metro"
 
 
 def test_me_without_token(client: TestClient) -> None:

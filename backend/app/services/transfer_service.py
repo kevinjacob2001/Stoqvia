@@ -109,7 +109,6 @@ def create_transfer(
         product_name=options.product_name,
         qty=options.requested_qty,
         status=REQUEST_OPEN,
-        created_at=created_at,
         invited=[
             InviteStatus(
                 store_id=store_id,
@@ -145,7 +144,6 @@ def list_my_transfers(
                 product_name=product_name,
                 qty=int(doc["qty"]),
                 status=doc["status"],
-                created_at=doc["created_at"],
                 invited=[
                     InviteStatus(
                         store_id=str(invite["store_id"]),
@@ -169,16 +167,9 @@ def list_my_transfers(
                 sku=sku,
                 product_name=product_name,
                 qty=int(doc["qty"]),
-                requester_store_id=str(doc["requester_store_id"]),
                 requester_store_name=names.get(doc["requester_store_id"], ""),
                 status=invite["status"],
-                created_at=doc["created_at"],
             )
         )
 
-    return MyTransfersResponse(
-        outgoing=outgoing,
-        incoming=incoming,
-        outgoing_count=len(outgoing),
-        incoming_count=len(incoming),
-    )
+    return MyTransfersResponse(outgoing=outgoing, incoming=incoming)

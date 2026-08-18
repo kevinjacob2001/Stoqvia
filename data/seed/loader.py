@@ -23,8 +23,6 @@ REF_FIELDS = frozenset(
         "store_id",
         "product_id",
         "supplier_id",
-        "from_store_id",
-        "to_store_id",
         "requester_store_id",
     }
 )

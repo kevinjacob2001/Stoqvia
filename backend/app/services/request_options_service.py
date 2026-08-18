@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from bson.decimal128 import Decimal128
 from fastapi import HTTPException, status
 from pymongo.database import Database
 
@@ -21,12 +20,6 @@ from app.services.geo import BAND_LABELS, BAND_ORDER, distance_km, radius_band
 from app.services.inventory_service import parse_object_id, _require
 
 
-def _money(value: Any) -> float:
-    if isinstance(value, Decimal128):
-        return float(value.to_decimal())
-    return float(value)
-
-
 def _best_supplier(db: Database, product_oid: Any, requested_qty: int) -> Optional[SupplierOption]:
     links = list(db.supplier_products.find({"product_id": product_oid}))
     options: List[SupplierOption] = []
@@ -34,21 +27,16 @@ def _best_supplier(db: Database, product_oid: Any, requested_qty: int) -> Option
         supplier = db.suppliers.find_one({"_id": link["supplier_id"], "approved": True})
         if supplier is None:
             continue
-        recommended = max(requested_qty, int(supplier["min_order_qty"]))
         options.append(
             SupplierOption(
-                supplier_id=str(supplier["_id"]),
                 name=supplier["name"],
                 lead_days=int(link["lead_days"]),
-                min_order_qty=int(supplier["min_order_qty"]),
-                available_qty=int(link["available_qty"]),
-                unit_cost=_money(link["unit_cost"]),
-                recommended_qty=recommended,
+                recommended_qty=max(requested_qty, int(supplier["min_order_qty"])),
             )
         )
     if not options:
         return None
-    options.sort(key=lambda item: (item.lead_days, item.unit_cost, item.name))
+    options.sort(key=lambda item: (item.lead_days, item.name))
     return options[0]
 
 
@@ -101,14 +89,8 @@ def get_request_options(
             DonorOption(
                 store_id=donor_forecast.store_id,
                 store_name=donor_forecast.store_name,
-                region=store["region"],
                 distance_km=kilometres,
-                radius_band=band,
-                usable_stock=donor_forecast.current_usable_stock,
-                predicted_7d_demand=donor_forecast.predicted_7d_demand,
-                safety_stock=donor_forecast.safety_stock,
                 safe_surplus=surplus,
-                risk=donor_forecast.risk,
                 recommended_qty=min(requested_qty, surplus),
             )
         )
@@ -124,13 +106,9 @@ def get_request_options(
         )
 
     return RequestOptionsResponse(
-        store_id=receiver.store_id,
-        store_name=receiver.store_name,
         product_id=receiver.product_id,
         sku=receiver.sku,
         product_name=receiver.product_name,
-        risk=receiver.risk,
-        shortage_qty=requested_qty,
         requested_qty=requested_qty,
         nearby_groups=nearby_groups,
         supplier=_best_supplier(database, product_oid, requested_qty),

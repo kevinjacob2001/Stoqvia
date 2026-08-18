@@ -138,9 +138,7 @@ def _forecast_for_docs(
 
     usable = calculate_usable_stock(int(inventory["on_hand"]), int(inventory["reserved"]))
     safety = int(inventory["safety_stock"])
-    projected = usable - predicted
     shortage = calculate_shortage(usable, predicted, safety)
-    horizon_end = horizon_start + timedelta(days=HORIZON_DAYS - 1)
     return ForecastResponse(
         store_id=store_id,
         store_name=store["name"],
@@ -150,14 +148,9 @@ def _forecast_for_docs(
         current_usable_stock=usable,
         predicted_7d_demand=predicted,
         safety_stock=safety,
-        projected_available_stock=projected,
         predicted_shortage_qty=shortage,
-        risk=classify_risk(shortage, projected, safety),
+        risk=classify_risk(shortage, usable - predicted, safety),
         method=method,
-        lookback_days=LOOKBACK_DAYS,
-        horizon_start=horizon_start,
-        horizon_end=horizon_end,
-        shortage_includes_safety_stock=True,
     )
 
 

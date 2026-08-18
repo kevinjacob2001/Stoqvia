@@ -21,7 +21,6 @@ class OutgoingTransfer(BaseModel):
     product_name: str
     qty: int = Field(ge=1)
     status: str
-    created_at: datetime
     invited: List[InviteStatus]
 
 
@@ -30,14 +29,10 @@ class IncomingTransfer(BaseModel):
     sku: str
     product_name: str
     qty: int = Field(ge=1)
-    requester_store_id: str
     requester_store_name: str
     status: str
-    created_at: datetime
 
 
 class MyTransfersResponse(BaseModel):
     outgoing: List[OutgoingTransfer]
     incoming: List[IncomingTransfer]
-    outgoing_count: int = Field(ge=0)
-    incoming_count: int = Field(ge=0)

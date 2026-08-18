@@ -96,11 +96,12 @@ export default function App() {
     login(username, password)
       .then((payload) => {
         setToken(payload.token);
-        return fetchMe();
-      })
-      .then((me) => {
         setView("inventory");
-        setSession(me);
+        setSession({
+          store_id: payload.store_id,
+          store_name: payload.store_name,
+          username: payload.username,
+        });
       })
       .catch(() => setLoginError("Invalid username or password"))
       .finally(() => setSubmitting(false));
@@ -175,7 +176,6 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>Stoqvia</h1>
-          <p>{session.store_name}</p>
         </div>
         <button className="ghost-button" type="button" onClick={handleLogout}>
           Log out
@@ -212,8 +212,8 @@ export default function App() {
   );
 
   function renderHome(current: MeResponse) {
-    const incomingCount = transfers?.incoming_count ?? 0;
-    const outgoingCount = transfers?.outgoing_count ?? 0;
+    const incomingCount = transfers?.incoming.length ?? 0;
+    const outgoingCount = transfers?.outgoing.length ?? 0;
     const nav = (
       <StoreNav
         session={current}

@@ -33,7 +33,7 @@ export default function InventoryTable({
             const forecast = forecasts[item.product_id];
             const risk = forecast?.risk;
             return (
-              <tr key={item.product_id} className={risk === "HIGH" ? "low" : undefined}>
+              <tr key={item.product_id}>
                 <td>{item.sku}</td>
                 <td>{item.product_name}</td>
                 <td className="num">{item.on_hand}</td>

@@ -61,14 +61,12 @@ def test_empty_tables_before_any_request(client: TestClient) -> None:
     response = client.get("/api/v1/me/transfers", headers=_auth(token))
     assert response.status_code == 200
     payload = response.json()
-    assert payload["outgoing_count"] == 0
-    assert payload["incoming_count"] == 0
     assert payload["outgoing"] == []
     assert payload["incoming"] == []
 
 
 def test_broadcast_appears_in_outgoing_and_incoming(client: TestClient) -> None:
-    product_id, marion_id, mile_id, modbury_id = _drill_and_stores()
+    product_id, marion_id, mile_id, _modbury_id = _drill_and_stores()
     cbd = _login(client, "admin.cbd", "cbd123")
     created = client.post(
         "/api/v1/me/transfers",
@@ -80,20 +78,20 @@ def test_broadcast_appears_in_outgoing_and_incoming(client: TestClient) -> None:
     assert {row["store_id"] for row in created.json()["invited"]} == {marion_id, mile_id}
 
     outgoing = client.get("/api/v1/me/transfers", headers=_auth(cbd["token"])).json()
-    assert outgoing["outgoing_count"] == 1
-    assert outgoing["incoming_count"] == 0
+    assert len(outgoing["outgoing"]) == 1
+    assert outgoing["incoming"] == []
     assert "Marion" in [row["store_name"] for row in outgoing["outgoing"][0]["invited"]]
 
     marion = _login(client, "admin.marion", "marion123")
     marion_box = client.get("/api/v1/me/transfers", headers=_auth(marion["token"])).json()
-    assert marion_box["incoming_count"] == 1
-    assert marion_box["outgoing_count"] == 0
+    assert len(marion_box["incoming"]) == 1
+    assert marion_box["outgoing"] == []
     assert marion_box["incoming"][0]["requester_store_name"] == "Adelaide CBD"
     assert marion_box["incoming"][0]["status"] == "PENDING"
 
     modbury = _login(client, "admin.modbury", "modbury123")
     modbury_box = client.get("/api/v1/me/transfers", headers=_auth(modbury["token"])).json()
-    assert modbury_box["incoming_count"] == 0
+    assert modbury_box["incoming"] == []
 
 
 def test_cannot_broadcast_twice_while_open(client: TestClient) -> None:

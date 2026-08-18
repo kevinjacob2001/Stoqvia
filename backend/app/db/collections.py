@@ -131,14 +131,12 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
             "required": [
                 "name",
                 "approved",
-                "default_lead_days",
                 "min_order_qty",
             ],
             "properties": {
                 "_id": _object_id(),
                 "name": _string(),
                 "approved": _bool(),
-                "default_lead_days": _int_min(0),
                 "min_order_qty": _int_min(1),
             },
             "additionalProperties": False,
@@ -242,11 +240,9 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
 COLLECTION_INDEXES: dict[str, list[tuple[list[tuple[str, Any]], dict[str, Any]]]] = {
     "products": [
         ([("sku", 1)], {"unique": True, "name": "uniq_sku"}),
-        ([("category", 1)], {"name": "by_category"}),
     ],
     "stores": [
         ([("name", 1)], {"unique": True, "name": "uniq_store_name"}),
-        ([("region", 1)], {"name": "by_region"}),
     ],
     "inventory": [
         (

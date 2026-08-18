@@ -130,6 +130,5 @@ def get_me(token: str, db: Optional[Database] = None) -> MeResponse:
     return MeResponse(
         store_id=str(store["_id"]),
         store_name=store["name"],
-        region=store["region"],
         username=user["username"],
     )

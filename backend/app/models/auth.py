@@ -18,5 +18,4 @@ class LoginResponse(BaseModel):
 class MeResponse(BaseModel):
     store_id: str
     store_name: str
-    region: str
     username: str

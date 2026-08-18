@@ -74,7 +74,6 @@ class SalesDaily(SalesDailyCreate):
 class SupplierCreate(MongoModel):
     name: str = Field(min_length=1)
     approved: bool = True
-    default_lead_days: int = Field(ge=0)
     min_order_qty: int = Field(ge=1)
 
 

@@ -1,6 +1,5 @@
 """Inventory API response models."""
 
-from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel, Field
@@ -9,9 +8,6 @@ from pydantic import BaseModel, Field
 class StoreSummary(BaseModel):
     store_id: str
     name: str
-    region: str
-    latitude: float
-    longitude: float
 
 
 class InventoryItem(BaseModel):
@@ -24,13 +20,11 @@ class InventoryItem(BaseModel):
     reserved: int = Field(ge=0)
     usable_stock: int = Field(ge=0)
     safety_stock: int = Field(ge=0)
-    updated_at: datetime
 
 
 class StoreInventoryResponse(BaseModel):
     store_id: str
     store_name: str
-    region: str
     item_count: int
     items: List[InventoryItem]
 
