@@ -33,6 +33,8 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     forecast_model: str = Field(default="lightgbm", alias="FORECAST_MODEL")
+    auth_secret: str = Field(default="stoqvia-dev-auth-secret", alias="AUTH_SECRET")
+    auth_token_hours: int = Field(default=12, alias="AUTH_TOKEN_HOURS")
 
 
 @lru_cache
