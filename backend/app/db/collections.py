@@ -217,6 +217,25 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                         "additionalProperties": False,
                     },
                 },
+                # Optional fields set as the transfer progresses
+                "accepted_store_id": _object_id(),
+                "accepted_at": _date(),
+                "dispatched_at": _date(),
+                "completed_at": _date(),
+                "lead_days": _int_min(0),
+                "events": {
+                    "bsonType": "array",
+                    "items": {
+                        "bsonType": "object",
+                        "required": ["at", "actor", "action"],
+                        "properties": {
+                            "at": _date(),
+                            "actor": _string(),
+                            "action": _string(),
+                        },
+                        "additionalProperties": False,
+                    },
+                },
             },
             "additionalProperties": False,
         }
