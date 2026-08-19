@@ -55,14 +55,14 @@ export function fetchRequestOptions(productId: string): Promise<RequestOptionsRe
 }
 
 export function fetchMyTransfers(): Promise<MyTransfersResponse> {
-  return requestJson<MyTransfersResponse>("/me/transfers");
+  return requestJson<MyTransfersResponse>("/transfers");
 }
 
 export function createTransfer(
   productId: string,
   donorStoreIds: string[],
 ): Promise<OutgoingTransfer> {
-  return requestJson<OutgoingTransfer>("/me/transfers", {
+  return requestJson<OutgoingTransfer>("/transfers", {
     method: "POST",
     body: JSON.stringify({ product_id: productId, donor_store_ids: donorStoreIds }),
   });
@@ -72,18 +72,18 @@ export function respondToTransfer(
   transferId: string,
   action: RespondAction,
 ): Promise<IncomingTransfer> {
-  return requestJson<IncomingTransfer>(`/me/transfers/${transferId}/respond`, {
+  return requestJson<IncomingTransfer>(`/transfers/${transferId}/respond`, {
     method: "POST",
     body: JSON.stringify({ action }),
   });
 }
 
 export function dispatchTransfer(transferId: string): Promise<OutgoingTransfer> {
-  return requestJson<OutgoingTransfer>(`/me/transfers/${transferId}/dispatch`, {
+  return requestJson<OutgoingTransfer>(`/transfers/${transferId}/dispatch`, {
     method: "POST",
   });
 }
 
 export function fetchTransferDetail(transferId: string): Promise<TransferDetail> {
-  return requestJson<TransferDetail>(`/me/transfers/${transferId}`);
+  return requestJson<TransferDetail>(`/transfers/${transferId}`);
 }
