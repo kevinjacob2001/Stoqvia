@@ -57,3 +57,12 @@ def get_transfer_detail(
 ) -> TransferDetail:
     me = auth_service.get_me(token)
     return transfer_service.get_transfer_detail(transfer_id, me.store_id)
+
+
+@router.post("/transfers/{transfer_id}/contact-supplier", response_model=TransferDetail)
+def contact_supplier(
+    transfer_id: str,
+    token: str = Depends(require_token),
+) -> TransferDetail:
+    me = auth_service.get_me(token)
+    return transfer_service.contact_supplier_transfer(transfer_id, me.store_id)

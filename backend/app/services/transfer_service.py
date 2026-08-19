@@ -76,6 +76,30 @@ def _get_lead_days(db: Database, store_oid: Any, product_oid: Any) -> int:
     return DEFAULT_LEAD_DAYS
 
 
+def _best_supplier_lead_days(db: Database, product_oid: Any) -> int:
+    """Pick the best (lowest lead_days) approved supplier for a product.
+
+    This is used for supplier escalation where we are no longer relying on
+    donor store inventory.
+    """
+    best: Optional[int] = None
+    links = list(db.supplier_products.find({"product_id": product_oid}))
+    for link in links:
+        supplier_id = link.get("supplier_id")
+        if not supplier_id:
+            continue
+        supplier = db.suppliers.find_one({"_id": supplier_id, "approved": True})
+        if supplier is None:
+            continue
+        lead = link.get("lead_days")
+        if lead is None:
+            continue
+        lead_i = max(1, int(lead))
+        if best is None or lead_i < best:
+            best = lead_i
+    return best if best is not None else DEFAULT_LEAD_DAYS
+
+
 def _append_event(db: Database, transfer_oid: ObjectId, actor: str, action: str) -> None:
     db.stock_transfers.update_one(
         {"_id": transfer_oid},
@@ -132,6 +156,9 @@ def _build_detail(
     accepted_store_name: Optional[str] = None
     if doc.get("accepted_store_id"):
         accepted_store_name = names.get(doc["accepted_store_id"])
+    elif doc.get("status") in (STATUS_IN_TRANSIT, STATUS_COMPLETED):
+        # Supplier fulfilment has no accepted_store_id.
+        accepted_store_name = "Supplier"
     my_invite = next(
         (inv for inv in doc["invited"] if inv["store_id"] == viewer_store_oid),
         None,
@@ -162,6 +189,9 @@ def _build_detail(
 def _maybe_auto_complete(db: Database) -> None:
     """Auto-complete IN_TRANSIT transfers whose lead_days have elapsed."""
     now = _now()
+    # Mongo/PyMongo may return stored BSON dates as timezone-naive UTC.
+    # Normalize both sides to naive UTC to avoid aware/naive comparison errors.
+    now_naive = now.replace(tzinfo=None)
     due = list(
         db.stock_transfers.find(
             {
@@ -173,8 +203,10 @@ def _maybe_auto_complete(db: Database) -> None:
     )
     for doc in due:
         dispatched = doc["dispatched_at"]
+        if dispatched.tzinfo is not None:
+            dispatched = dispatched.replace(tzinfo=None)
         lead = int(doc["lead_days"])
-        if now >= dispatched + timedelta(days=lead):
+        if now_naive >= dispatched + timedelta(days=lead):
             db.stock_transfers.update_one(
                 {"_id": doc["_id"]},
                 {"$set": {"status": STATUS_COMPLETED, "completed_at": now}},
@@ -483,3 +515,68 @@ def get_transfer_detail(
     names = _store_names(database)
     sku, product_name = _product_label(database, doc["product_id"])
     return _build_detail(doc, viewer_store_oid, names, sku, product_name)
+
+
+def contact_supplier_transfer(
+    transfer_id: str,
+    requester_store_id: str,
+    db: Optional[Database] = None,
+) -> TransferDetail:
+    """Move a fully-declined request into supplier fulfilment.
+
+    Supplier fulfilment is inventory-agnostic: we do not validate donor stock.
+    """
+    database = db if db is not None else get_db()
+    _maybe_auto_complete(database)
+
+    try:
+        transfer_oid = ObjectId(transfer_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid transfer_id")
+
+    requester_oid = parse_object_id(requester_store_id, "store_id")
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+
+    if doc["requester_store_id"] != requester_oid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only requester can contact supplier")
+
+    if doc.get("status") != STATUS_DECLINED:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transfer is not in a declinable state")
+
+    now = _now()
+    lead_days = _best_supplier_lead_days(database, doc["product_id"])
+
+    database.stock_transfers.update_one(
+        {"_id": transfer_oid},
+        {
+            "$set": {
+                "status": STATUS_IN_TRANSIT,
+                "accepted_at": now,
+                "dispatched_at": now,
+                "lead_days": lead_days,
+                # accepted_store_id intentionally not set for supplier fulfilment
+            }
+        },
+    )
+
+    names = _store_names(database)
+    actor_name = names.get(requester_oid, requester_store_id)
+    database.stock_transfers.update_one(
+        {"_id": transfer_oid},
+        {
+            "$push": {
+                "events": {
+                    "at": now,
+                    "actor": actor_name,
+                    "action": "SUPPLIER_CONTACTED",
+                }
+            }
+        },
+    )
+
+    # Re-fetch for response
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    sku, product_name = _product_label(database, doc["product_id"])
+    return _build_detail(doc, requester_oid, names, sku, product_name)
