@@ -17,6 +17,7 @@ from app.models.transfers import (
     OutgoingTransfer,
     RespondToTransferRequest,
     STATUS_COMPLETED,
+    STATUS_DECLINED,
     STATUS_FULFILLED,
     STATUS_IN_TRANSIT,
     STATUS_OPEN,
@@ -25,6 +26,7 @@ from app.models.transfers import (
     INVITE_DECLINED,
     INVITE_PASSED,
     INVITE_PENDING,
+    TransferDetail,
     TransferEvent,
 )
 from app.services.inventory_service import parse_object_id
@@ -115,6 +117,35 @@ def _build_incoming(
         my_status=my_invite["status"],
         all_invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
         status=doc["status"],
+        created_at=doc.get("created_at"),
+        accepted_at=doc.get("accepted_at"),
+        dispatched_at=doc.get("dispatched_at"),
+        completed_at=doc.get("completed_at"),
+        lead_days=doc.get("lead_days"),
+        events=[TransferEvent(**e) for e in doc.get("events", [])],
+    )
+
+
+def _build_detail(
+    doc: dict, viewer_store_oid: Any, names: Dict[Any, str], sku: str, product_name: str
+) -> TransferDetail:
+    accepted_store_name: Optional[str] = None
+    if doc.get("accepted_store_id"):
+        accepted_store_name = names.get(doc["accepted_store_id"])
+    my_invite = next(
+        (inv for inv in doc["invited"] if inv["store_id"] == viewer_store_oid),
+        None,
+    )
+    return TransferDetail(
+        transfer_id=str(doc["_id"]),
+        sku=sku,
+        product_name=product_name,
+        qty=int(doc["qty"]),
+        status=doc["status"],
+        requester_store_name=names.get(doc["requester_store_id"], ""),
+        accepted_store_name=accepted_store_name,
+        my_status=my_invite["status"] if my_invite else None,
+        invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
         created_at=doc.get("created_at"),
         accepted_at=doc.get("accepted_at"),
         dispatched_at=doc.get("dispatched_at"),
@@ -268,6 +299,13 @@ def respond_to_transfer(
             {"$set": {f"invited.{my_idx}.status": INVITE_DECLINED}},
         )
         _append_event(database, transfer_oid, actor_name, "DECLINED")
+        doc = database.stock_transfers.find_one({"_id": transfer_oid})
+        if doc is not None and all(inv["status"] == INVITE_DECLINED for inv in doc["invited"]):
+            database.stock_transfers.update_one(
+                {"_id": transfer_oid},
+                {"$set": {"status": STATUS_DECLINED}},
+            )
+            _append_event(database, transfer_oid, "system", "ALL_DECLINED")
 
     elif action == "CHECK_STOCK":
         if current_status != INVITE_PENDING:
@@ -414,3 +452,34 @@ def list_my_transfers(
         incoming.append(_build_incoming(doc, store_oid, names, sku, product_name))
 
     return MyTransfersResponse(outgoing=outgoing, incoming=incoming)
+
+
+def get_transfer_detail(
+    transfer_id: str,
+    viewer_store_id: str,
+    db: Optional[Database] = None,
+) -> TransferDetail:
+    database = db if db is not None else get_db()
+    _maybe_auto_complete(database)
+
+    try:
+        transfer_oid = ObjectId(transfer_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid transfer_id")
+
+    viewer_store_oid = parse_object_id(viewer_store_id, "store_id")
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+
+    is_requester = doc["requester_store_id"] == viewer_store_oid
+    is_invited = any(inv["store_id"] == viewer_store_oid for inv in doc["invited"])
+    if not is_requester and not is_invited:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this transfer",
+        )
+
+    names = _store_names(database)
+    sku, product_name = _product_label(database, doc["product_id"])
+    return _build_detail(doc, viewer_store_oid, names, sku, product_name)

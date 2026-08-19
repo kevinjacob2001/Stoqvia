@@ -10,6 +10,7 @@ STATUS_OPEN = "OPEN"
 STATUS_FULFILLED = "FULFILLED"
 STATUS_IN_TRANSIT = "IN_TRANSIT"
 STATUS_COMPLETED = "COMPLETED"
+STATUS_DECLINED = "DECLINED"
 
 # Invite-level statuses
 INVITE_PENDING = "PENDING"
@@ -78,3 +79,21 @@ class IncomingTransfer(BaseModel):
 class MyTransfersResponse(BaseModel):
     outgoing: List[OutgoingTransfer]
     incoming: List[IncomingTransfer]
+
+
+class TransferDetail(BaseModel):
+    transfer_id: str
+    sku: str
+    product_name: str
+    qty: int = Field(ge=1)
+    status: str
+    requester_store_name: str
+    accepted_store_name: Optional[str] = None
+    my_status: Optional[str] = None
+    invited: List[InviteStatus]
+    created_at: Optional[datetime] = None
+    accepted_at: Optional[datetime] = None
+    dispatched_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    lead_days: Optional[int] = None
+    events: List[TransferEvent] = Field(default_factory=list)

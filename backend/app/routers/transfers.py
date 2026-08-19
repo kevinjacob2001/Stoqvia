@@ -9,6 +9,7 @@ from app.models.transfers import (
     MyTransfersResponse,
     OutgoingTransfer,
     RespondToTransferRequest,
+    TransferDetail,
 )
 from app.services import auth_service, transfer_service
 
@@ -47,3 +48,12 @@ def dispatch_transfer(
 ) -> OutgoingTransfer:
     me = auth_service.get_me(token)
     return transfer_service.dispatch_transfer(transfer_id, me.store_id)
+
+
+@router.get("/me/transfers/{transfer_id}", response_model=TransferDetail)
+def get_transfer_detail(
+    transfer_id: str,
+    token: str = Depends(require_token),
+) -> TransferDetail:
+    me = auth_service.get_me(token)
+    return transfer_service.get_transfer_detail(transfer_id, me.store_id)
