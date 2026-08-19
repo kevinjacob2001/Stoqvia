@@ -89,6 +89,7 @@ def test_accept_closes_request_and_passes_others(client: TestClient) -> None:
     db = get_db()
     from bson import ObjectId
     doc = db.stock_transfers.find_one({"_id": ObjectId(tid)})
+    assert doc is not None
     assert doc["status"] == "FULFILLED"
 
     # Mile End should be PASSED
@@ -123,6 +124,7 @@ def test_decline_local_others_unaffected(client: TestClient) -> None:
     db = get_db()
     from bson import ObjectId
     doc = db.stock_transfers.find_one({"_id": ObjectId(tid)})
+    assert doc is not None
     assert doc["status"] == "OPEN"
     mile_invite = next(inv for inv in doc["invited"] if str(inv["store_id"]) == mile_id)
     assert mile_invite["status"] == "PENDING"
@@ -191,3 +193,20 @@ def test_all_invited_visible_on_incoming(client: TestClient) -> None:
     invited_names = {inv["store_name"] for inv in row["all_invited"]}
     assert "Marion" in invited_names
     assert "Mile End" in invited_names
+
+
+def test_all_declines_mark_request_declined(client: TestClient) -> None:
+    product_id, marion_id, mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
+
+    marion = _login(client, "admin.marion", "marion123")
+    mile = _login(client, "admin.mileend", "mileend123")
+    assert _respond(client, marion["token"], tid, "DECLINE").status_code == 200
+    assert _respond(client, mile["token"], tid, "DECLINE").status_code == 200
+
+    transfers = client.get("/api/v1/me/transfers", headers=_auth(cbd["token"]))
+    assert transfers.status_code == 200
+    declined = transfers.json()["outgoing"][0]
+    assert declined["status"] == "DECLINED"
+    assert any(event["action"] == "ALL_DECLINED" for event in declined["events"])

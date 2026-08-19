@@ -118,3 +118,24 @@ def test_create_transfer_requires_auth(client: TestClient) -> None:
         json={"product_id": product_id, "donor_store_ids": [marion_id]},
     )
     assert response.status_code == 401
+
+
+def test_transfer_detail_visible_to_requester(client: TestClient) -> None:
+    product_id, marion_id, mile_id, _ = _drill_and_stores()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    created = client.post(
+        "/api/v1/me/transfers",
+        headers=_auth(cbd["token"]),
+        json={"product_id": product_id, "donor_store_ids": [marion_id, mile_id]},
+    )
+    assert created.status_code == 200
+    transfer_id = created.json()["transfer_id"]
+
+    detail = client.get(f"/api/v1/me/transfers/{transfer_id}", headers=_auth(cbd["token"]))
+    assert detail.status_code == 200
+    payload = detail.json()
+    assert payload["transfer_id"] == transfer_id
+    assert payload["requester_store_name"] == "Adelaide CBD"
+    assert payload["product_name"]
+    assert len(payload["invited"]) == 2
+    assert payload["events"][0]["action"] == "REQUESTED"
