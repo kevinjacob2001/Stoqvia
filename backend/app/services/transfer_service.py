@@ -1,10 +1,11 @@
-"""Broadcast transfer requests. No inventory writes and no Accept yet."""
+"""Transfer lifecycle: broadcast → Accept → Dispatch → Auto-complete."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set
 
+from bson import ObjectId
 from fastapi import HTTPException, status
 from pymongo.database import Database
 
@@ -14,12 +15,28 @@ from app.models.transfers import (
     InviteStatus,
     MyTransfersResponse,
     OutgoingTransfer,
+    RespondToTransferRequest,
+    STATUS_COMPLETED,
+    STATUS_FULFILLED,
+    STATUS_IN_TRANSIT,
+    STATUS_OPEN,
+    INVITE_ACCEPTED,
+    INVITE_CHECKING,
+    INVITE_DECLINED,
+    INVITE_PASSED,
+    INVITE_PENDING,
+    TransferEvent,
 )
 from app.services.inventory_service import parse_object_id
 from app.services.request_options_service import get_request_options
 
-REQUEST_OPEN = "OPEN"
-INVITE_PENDING = "PENDING"
+DEFAULT_LEAD_DAYS = 2  # fallback when no supplier link found
+
+
+def _now() -> datetime:
+    # Keep timezone information so the frontend can render correct "now-based" timings.
+    # Mongo stores datetimes as BSON dates; Pydantic will serialize consistently.
+    return datetime.now(timezone.utc)
 
 
 def _store_names(db: Database) -> Dict[Any, str]:
@@ -40,6 +57,103 @@ def _eligible_donor_ids(options) -> Set[str]:
             ids.add(store.store_id)
     return ids
 
+
+def _build_invite_status(invite: dict, names: Dict[Any, str]) -> InviteStatus:
+    return InviteStatus(
+        store_id=str(invite["store_id"]),
+        store_name=names.get(invite["store_id"], ""),
+        status=invite["status"],
+    )
+
+
+def _get_lead_days(db: Database, store_oid: Any, product_oid: Any) -> int:
+    """Best lead_days from supplier_products for this store's supplier. Fallback to DEFAULT."""
+    link = db.supplier_products.find_one({"product_id": product_oid})
+    if link and "lead_days" in link:
+        return max(1, int(link["lead_days"]))
+    return DEFAULT_LEAD_DAYS
+
+
+def _append_event(db: Database, transfer_oid: ObjectId, actor: str, action: str) -> None:
+    db.stock_transfers.update_one(
+        {"_id": transfer_oid},
+        {"$push": {"events": {"at": _now(), "actor": actor, "action": action}}},
+    )
+
+
+def _build_outgoing(doc: dict, names: Dict[Any, str], sku: str, product_name: str) -> OutgoingTransfer:
+    accepted_store_name: Optional[str] = None
+    if doc.get("accepted_store_id"):
+        accepted_store_name = names.get(doc["accepted_store_id"])
+    return OutgoingTransfer(
+        transfer_id=str(doc["_id"]),
+        sku=sku,
+        product_name=product_name,
+        qty=int(doc["qty"]),
+        status=doc["status"],
+        invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
+        created_at=doc.get("created_at"),
+        accepted_at=doc.get("accepted_at"),
+        dispatched_at=doc.get("dispatched_at"),
+        completed_at=doc.get("completed_at"),
+        accepted_store_name=accepted_store_name,
+        lead_days=doc.get("lead_days"),
+        events=[TransferEvent(**e) for e in doc.get("events", [])],
+    )
+
+
+def _build_incoming(
+    doc: dict, store_oid: Any, names: Dict[Any, str], sku: str, product_name: str
+) -> IncomingTransfer:
+    my_invite = next(inv for inv in doc["invited"] if inv["store_id"] == store_oid)
+    return IncomingTransfer(
+        transfer_id=str(doc["_id"]),
+        sku=sku,
+        product_name=product_name,
+        qty=int(doc["qty"]),
+        requester_store_name=names.get(doc["requester_store_id"], ""),
+        my_status=my_invite["status"],
+        all_invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
+        status=doc["status"],
+        created_at=doc.get("created_at"),
+        accepted_at=doc.get("accepted_at"),
+        dispatched_at=doc.get("dispatched_at"),
+        completed_at=doc.get("completed_at"),
+        lead_days=doc.get("lead_days"),
+        events=[TransferEvent(**e) for e in doc.get("events", [])],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Auto-complete: called on every relevant API request to tick over due transfers
+# ---------------------------------------------------------------------------
+
+def _maybe_auto_complete(db: Database) -> None:
+    """Auto-complete IN_TRANSIT transfers whose lead_days have elapsed."""
+    now = _now()
+    due = list(
+        db.stock_transfers.find(
+            {
+                "status": STATUS_IN_TRANSIT,
+                "dispatched_at": {"$exists": True},
+                "lead_days": {"$exists": True},
+            }
+        )
+    )
+    for doc in due:
+        dispatched = doc["dispatched_at"]
+        lead = int(doc["lead_days"])
+        if now >= dispatched + timedelta(days=lead):
+            db.stock_transfers.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"status": STATUS_COMPLETED, "completed_at": now}},
+            )
+            _append_event(db, doc["_id"], "system", "COMPLETED")
+
+
+# ---------------------------------------------------------------------------
+# Create
+# ---------------------------------------------------------------------------
 
 def create_transfer(
     requester_store_id: str,
@@ -62,7 +176,7 @@ def create_transfer(
 
     options = get_request_options(requester_store_id, product_id, db=database)
     eligible = _eligible_donor_ids(options)
-    unknown = [store_id for store_id in unique_ids if store_id not in eligible]
+    unknown = [sid for sid in unique_ids if sid not in eligible]
     if unknown:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -71,60 +185,215 @@ def create_transfer(
 
     requester_oid = parse_object_id(requester_store_id, "store_id")
     product_oid = parse_object_id(product_id, "product_id")
-    existing = database.stock_transfers.find_one(
-        {
-            "requester_store_id": requester_oid,
-            "product_id": product_oid,
-            "status": REQUEST_OPEN,
-        }
-    )
-    if existing is not None:
+    if database.stock_transfers.find_one(
+        {"requester_store_id": requester_oid, "product_id": product_oid, "status": STATUS_OPEN}
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An open transfer request already exists for this product",
         )
 
+    now = _now()
     invited = [
-        {
-            "store_id": parse_object_id(store_id, "store_id"),
-            "status": INVITE_PENDING,
-        }
-        for store_id in unique_ids
+        {"store_id": parse_object_id(sid, "store_id"), "status": INVITE_PENDING}
+        for sid in unique_ids
     ]
-    created_at = datetime.now(timezone.utc).replace(tzinfo=None)
     result = database.stock_transfers.insert_one(
         {
             "product_id": product_oid,
             "requester_store_id": requester_oid,
             "qty": options.requested_qty,
-            "status": REQUEST_OPEN,
-            "created_at": created_at,
+            "status": STATUS_OPEN,
+            "created_at": now,
             "invited": invited,
+            "events": [{"at": now, "actor": "system", "action": "REQUESTED"}],
         }
     )
     names = _store_names(database)
-    return OutgoingTransfer(
-        transfer_id=str(result.inserted_id),
-        sku=options.sku,
-        product_name=options.product_name,
-        qty=options.requested_qty,
-        status=REQUEST_OPEN,
-        invited=[
-            InviteStatus(
-                store_id=store_id,
-                store_name=names.get(parse_object_id(store_id, "store_id"), ""),
-                status=INVITE_PENDING,
-            )
-            for store_id in unique_ids
-        ],
-    )
+    doc = database.stock_transfers.find_one({"_id": result.inserted_id})
+    return _build_outgoing(doc, names, options.sku, options.product_name)
 
+
+# ---------------------------------------------------------------------------
+# Respond (Accept / Decline / Check stock / Clear check)
+# ---------------------------------------------------------------------------
+
+def respond_to_transfer(
+    transfer_id: str,
+    responder_store_id: str,
+    body: RespondToTransferRequest,
+    db: Optional[Database] = None,
+) -> IncomingTransfer:
+    database = db if db is not None else get_db()
+    _maybe_auto_complete(database)
+
+    try:
+        transfer_oid = ObjectId(transfer_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid transfer_id")
+
+    responder_oid = parse_object_id(responder_store_id, "store_id")
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+    if doc["status"] != STATUS_OPEN:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This transfer request is no longer open",
+        )
+
+    my_idx = next(
+        (i for i, inv in enumerate(doc["invited"]) if inv["store_id"] == responder_oid), None
+    )
+    if my_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You were not invited to this transfer",
+        )
+
+    my_invite = doc["invited"][my_idx]
+    current_status = my_invite["status"]
+    action = body.action
+    names = _store_names(database)
+    actor_name = names.get(responder_oid, responder_store_id)
+
+    if action == "DECLINE":
+        if current_status not in (INVITE_PENDING, INVITE_CHECKING):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot decline from status {current_status}",
+            )
+        database.stock_transfers.update_one(
+            {"_id": transfer_oid},
+            {"$set": {f"invited.{my_idx}.status": INVITE_DECLINED}},
+        )
+        _append_event(database, transfer_oid, actor_name, "DECLINED")
+
+    elif action == "CHECK_STOCK":
+        if current_status != INVITE_PENDING:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot check stock from status {current_status}",
+            )
+        if any(
+            inv["status"] == INVITE_CHECKING
+            for i, inv in enumerate(doc["invited"])
+            if i != my_idx
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Another store is already checking stock — please wait",
+            )
+        database.stock_transfers.update_one(
+            {"_id": transfer_oid},
+            {"$set": {f"invited.{my_idx}.status": INVITE_CHECKING}},
+        )
+        _append_event(database, transfer_oid, actor_name, "CHECK_STOCK")
+
+    elif action == "CLEAR_CHECK":
+        if current_status != INVITE_CHECKING:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You are not currently checking stock",
+            )
+        database.stock_transfers.update_one(
+            {"_id": transfer_oid},
+            {"$set": {f"invited.{my_idx}.status": INVITE_PENDING}},
+        )
+        _append_event(database, transfer_oid, actor_name, "CLEAR_CHECK")
+
+    elif action == "ACCEPT":
+        if current_status not in (INVITE_PENDING, INVITE_CHECKING):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot accept from status {current_status}",
+            )
+        if any(
+            inv["status"] == INVITE_CHECKING
+            for i, inv in enumerate(doc["invited"])
+            if i != my_idx
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Another store is checking stock — please wait before accepting",
+            )
+        now = _now()
+        lead_days = _get_lead_days(database, responder_oid, doc["product_id"])
+        updates: Dict[str, Any] = {
+            f"invited.{my_idx}.status": INVITE_ACCEPTED,
+            "status": STATUS_FULFILLED,
+            "accepted_store_id": responder_oid,
+            "accepted_at": now,
+            "lead_days": lead_days,
+        }
+        for i, inv in enumerate(doc["invited"]):
+            if i != my_idx and inv["status"] == INVITE_PENDING:
+                updates[f"invited.{i}.status"] = INVITE_PASSED
+        database.stock_transfers.update_one({"_id": transfer_oid}, {"$set": updates})
+        _append_event(database, transfer_oid, actor_name, "ACCEPTED")
+
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    sku, product_name = _product_label(database, doc["product_id"])
+    return _build_incoming(doc, responder_oid, names, sku, product_name)
+
+
+# ---------------------------------------------------------------------------
+# Dispatch (donor marks stock sent)
+# ---------------------------------------------------------------------------
+
+def dispatch_transfer(
+    transfer_id: str,
+    dispatcher_store_id: str,
+    db: Optional[Database] = None,
+) -> OutgoingTransfer:
+    database = db if db is not None else get_db()
+    _maybe_auto_complete(database)
+
+    try:
+        transfer_oid = ObjectId(transfer_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid transfer_id")
+
+    dispatcher_oid = parse_object_id(dispatcher_store_id, "store_id")
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+    if doc["status"] != STATUS_FULFILLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Transfer must be FULFILLED to dispatch, currently {doc['status']}",
+        )
+    if doc.get("accepted_store_id") != dispatcher_oid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the accepting store can mark as dispatched",
+        )
+
+    now = _now()
+    database.stock_transfers.update_one(
+        {"_id": transfer_oid},
+        {"$set": {"status": STATUS_IN_TRANSIT, "dispatched_at": now}},
+    )
+    names = _store_names(database)
+    actor_name = names.get(dispatcher_oid, dispatcher_store_id)
+    _append_event(database, transfer_oid, actor_name, "DISPATCHED")
+
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    sku, product_name = _product_label(database, doc["product_id"])
+    return _build_outgoing(doc, names, sku, product_name)
+
+
+# ---------------------------------------------------------------------------
+# List
+# ---------------------------------------------------------------------------
 
 def list_my_transfers(
     store_id: str,
     db: Optional[Database] = None,
 ) -> MyTransfersResponse:
     database = db if db is not None else get_db()
+    _maybe_auto_complete(database)
+
     store_oid = parse_object_id(store_id, "store_id")
     names = _store_names(database)
     outgoing_docs = list(
@@ -137,39 +406,11 @@ def list_my_transfers(
     outgoing: List[OutgoingTransfer] = []
     for doc in outgoing_docs:
         sku, product_name = _product_label(database, doc["product_id"])
-        outgoing.append(
-            OutgoingTransfer(
-                transfer_id=str(doc["_id"]),
-                sku=sku,
-                product_name=product_name,
-                qty=int(doc["qty"]),
-                status=doc["status"],
-                invited=[
-                    InviteStatus(
-                        store_id=str(invite["store_id"]),
-                        store_name=names.get(invite["store_id"], ""),
-                        status=invite["status"],
-                    )
-                    for invite in doc["invited"]
-                ],
-            )
-        )
+        outgoing.append(_build_outgoing(doc, names, sku, product_name))
 
     incoming: List[IncomingTransfer] = []
     for doc in incoming_docs:
-        invite = next(
-            row for row in doc["invited"] if row["store_id"] == store_oid
-        )
         sku, product_name = _product_label(database, doc["product_id"])
-        incoming.append(
-            IncomingTransfer(
-                transfer_id=str(doc["_id"]),
-                sku=sku,
-                product_name=product_name,
-                qty=int(doc["qty"]),
-                requester_store_name=names.get(doc["requester_store_id"], ""),
-                status=invite["status"],
-            )
-        )
+        incoming.append(_build_incoming(doc, store_oid, names, sku, product_name))
 
     return MyTransfersResponse(outgoing=outgoing, incoming=incoming)
