@@ -87,7 +87,7 @@ def test_broadcast_appears_in_outgoing_and_incoming(client: TestClient) -> None:
     assert len(marion_box["incoming"]) == 1
     assert marion_box["outgoing"] == []
     assert marion_box["incoming"][0]["requester_store_name"] == "Adelaide CBD"
-    assert marion_box["incoming"][0]["status"] == "PENDING"
+    assert marion_box["incoming"][0]["my_status"] == "PENDING"
 
     modbury = _login(client, "admin.modbury", "modbury123")
     modbury_box = client.get("/api/v1/me/transfers", headers=_auth(modbury["token"])).json()
