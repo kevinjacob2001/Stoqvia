@@ -74,6 +74,12 @@ export type InviteStatus = {
   status: string;
 };
 
+export type TransferEvent = {
+  at: string;
+  actor: string;
+  action: string;
+};
+
 export type OutgoingTransfer = {
   transfer_id: string;
   sku: string;
@@ -81,6 +87,13 @@ export type OutgoingTransfer = {
   qty: number;
   status: string;
   invited: InviteStatus[];
+  created_at: string | null;
+  accepted_at: string | null;
+  dispatched_at: string | null;
+  completed_at: string | null;
+  accepted_store_name: string | null;
+  lead_days: number | null;
+  events: TransferEvent[];
 };
 
 export type IncomingTransfer = {
@@ -89,10 +102,20 @@ export type IncomingTransfer = {
   product_name: string;
   qty: number;
   requester_store_name: string;
+  my_status: string;
+  all_invited: InviteStatus[];
   status: string;
+  created_at: string | null;
+  accepted_at: string | null;
+  dispatched_at: string | null;
+  completed_at: string | null;
+  lead_days: number | null;
+  events: TransferEvent[];
 };
 
 export type MyTransfersResponse = {
   outgoing: OutgoingTransfer[];
   incoming: IncomingTransfer[];
 };
+
+export type RespondAction = "ACCEPT" | "DECLINE" | "CHECK_STOCK" | "CLEAR_CHECK";

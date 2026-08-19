@@ -1,10 +1,12 @@
 import { getToken } from "./auth.ts";
 import type {
+  IncomingTransfer,
   LoginResponse,
   MeResponse,
   MyTransfersResponse,
   OutgoingTransfer,
   RequestOptionsResponse,
+  RespondAction,
   StoreForecastsResponse,
   StoreInventoryResponse,
 } from "./types.ts";
@@ -62,5 +64,21 @@ export function createTransfer(
   return requestJson<OutgoingTransfer>("/me/transfers", {
     method: "POST",
     body: JSON.stringify({ product_id: productId, donor_store_ids: donorStoreIds }),
+  });
+}
+
+export function respondToTransfer(
+  transferId: string,
+  action: RespondAction,
+): Promise<IncomingTransfer> {
+  return requestJson<IncomingTransfer>(`/me/transfers/${transferId}/respond`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+}
+
+export function dispatchTransfer(transferId: string): Promise<OutgoingTransfer> {
+  return requestJson<OutgoingTransfer>(`/me/transfers/${transferId}/dispatch`, {
+    method: "POST",
   });
 }

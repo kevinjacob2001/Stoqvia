@@ -1,11 +1,13 @@
 import type { MeResponse } from "../types.ts";
 
-export type HomeView = "inventory" | "received" | "transferred";
+export type HomeView = "inventory" | "received" | "accepted" | "in_transit" | "transferred";
 
 type StoreNavProps = {
   session: MeResponse;
   view: HomeView;
-  incomingCount: number;
+  receivedCount: number;
+  acceptedCount: number;
+  inTransitCount: number;
   outgoingCount: number;
   onChangeView: (view: HomeView) => void;
 };
@@ -13,7 +15,9 @@ type StoreNavProps = {
 export default function StoreNav({
   session,
   view,
-  incomingCount,
+  receivedCount,
+  acceptedCount,
+  inTransitCount,
   outgoingCount,
   onChangeView,
 }: StoreNavProps) {
@@ -37,7 +41,23 @@ export default function StoreNav({
           onClick={() => onChangeView("received")}
         >
           Received
-          <span>{incomingCount}</span>
+          <span>{receivedCount}</span>
+        </button>
+        <button
+          className={view === "accepted" ? "active" : ""}
+          type="button"
+          onClick={() => onChangeView("accepted")}
+        >
+          Accepted
+          <span>{acceptedCount}</span>
+        </button>
+        <button
+          className={view === "in_transit" ? "active" : ""}
+          type="button"
+          onClick={() => onChangeView("in_transit")}
+        >
+          In transit
+          <span>{inTransitCount}</span>
         </button>
         <button
           className={view === "transferred" ? "active" : ""}

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   createTransfer,
+  dispatchTransfer,
   fetchMe,
   fetchMyTransfers,
   fetchRequestOptions,
   fetchStoreForecasts,
   fetchStoreInventory,
   login,
+  respondToTransfer,
 } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
 import InventoryTable from "./sections/InventoryTable.tsx";
@@ -21,6 +23,7 @@ import type {
   MeResponse,
   MyTransfersResponse,
   RequestOptionsResponse,
+  RespondAction,
   StoreInventoryResponse,
 } from "./types.ts";
 
@@ -41,6 +44,10 @@ export default function App() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [transfers, setTransfers] = useState<MyTransfersResponse | null>(null);
   const [view, setView] = useState<HomeView>("inventory");
+  const [responding, setResponding] = useState<string | null>(null);
+  const [respondError, setRespondError] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState<string | null>(null);
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
 
   const retry = useCallback(() => {
     setError(null);
@@ -132,6 +139,24 @@ export default function App() {
       .finally(() => setLoadingOptions(false));
   }
 
+  function handleRespond(transferId: string, action: RespondAction) {
+    setRespondError(null);
+    setResponding(transferId);
+    respondToTransfer(transferId, action)
+      .then(() => setReloadKey((key) => key + 1))
+      .catch((err: Error) => setRespondError(err.message))
+      .finally(() => setResponding(null));
+  }
+
+  function handleDispatch(transferId: string) {
+    setDispatchError(null);
+    setDispatching(transferId);
+    dispatchTransfer(transferId)
+      .then(() => setReloadKey((key) => key + 1))
+      .catch((err: Error) => setDispatchError(err.message))
+      .finally(() => setDispatching(null));
+  }
+
   function handleSendTransfer(storeIds: string[]) {
     if (!options) {
       return;
@@ -212,14 +237,24 @@ export default function App() {
   );
 
   function renderHome(current: MeResponse) {
-    const incomingCount = transfers?.incoming.length ?? 0;
-    const outgoingCount = transfers?.outgoing.length ?? 0;
+    const incoming = transfers?.incoming ?? [];
+    const outgoing = transfers?.outgoing ?? [];
+    const receivedCount = incoming.filter((r) => ["PENDING", "CHECKING"].includes(r.my_status)).length;
+    const acceptedCount = incoming.filter(
+      (r) => r.my_status === "ACCEPTED" && ["FULFILLED", "IN_TRANSIT"].includes(r.status),
+    ).length;
+    const inTransitCount =
+      outgoing.filter((r) => r.status === "IN_TRANSIT").length +
+      incoming.filter((r) => r.status === "IN_TRANSIT" && r.my_status === "ACCEPTED").length;
+
     const nav = (
       <StoreNav
         session={current}
         view={view}
-        incomingCount={incomingCount}
-        outgoingCount={outgoingCount}
+        receivedCount={receivedCount}
+        acceptedCount={acceptedCount}
+        inTransitCount={inTransitCount}
+        outgoingCount={outgoing.length}
         onChangeView={setView}
       />
     );
@@ -250,13 +285,27 @@ export default function App() {
         onRequestProduct={handleRequestProduct}
       />
     );
-    if (view === "received" || view === "transferred") {
+    if (view !== "inventory") {
+      const errorBanner =
+        respondError || dispatchError ? (
+          <p className="error" style={{ margin: "0 0 8px" }}>
+            {respondError ?? dispatchError}
+          </p>
+        ) : null;
       main = (
-        <TransferTables
-          mode={view}
-          outgoing={transfers?.outgoing ?? []}
-          incoming={transfers?.incoming ?? []}
-        />
+        <>
+          {errorBanner}
+          <TransferTables
+            mode={view}
+            outgoing={outgoing}
+            incoming={incoming}
+            myStoreId={current.store_id}
+            responding={responding}
+            dispatching={dispatching}
+            onRespond={handleRespond}
+            onDispatch={handleDispatch}
+          />
+        </>
       );
     }
 
