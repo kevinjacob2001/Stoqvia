@@ -56,7 +56,7 @@ def _drill_ids():
 
 def _broadcast(client, cbd_token, product_id, donor_ids):
     r = client.post(
-        "/api/v1/me/transfers",
+        "/api/v1/transfers",
         headers=_auth(cbd_token),
         json={"product_id": product_id, "donor_store_ids": donor_ids},
     )
@@ -66,7 +66,7 @@ def _broadcast(client, cbd_token, product_id, donor_ids):
 
 def _respond(client, token, transfer_id, action):
     return client.post(
-        f"/api/v1/me/transfers/{transfer_id}/respond",
+        f"/api/v1/transfers/{transfer_id}/respond",
         headers=_auth(token),
         json={"action": action},
     )
@@ -188,7 +188,7 @@ def test_all_invited_visible_on_incoming(client: TestClient) -> None:
     _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
 
     marion = _login(client, "admin.marion", "marion123")
-    transfers = client.get("/api/v1/me/transfers", headers=_auth(marion["token"])).json()
+    transfers = client.get("/api/v1/transfers", headers=_auth(marion["token"])).json()
     row = transfers["incoming"][0]
     invited_names = {inv["store_name"] for inv in row["all_invited"]}
     assert "Marion" in invited_names
@@ -205,7 +205,7 @@ def test_all_declines_mark_request_declined(client: TestClient) -> None:
     assert _respond(client, marion["token"], tid, "DECLINE").status_code == 200
     assert _respond(client, mile["token"], tid, "DECLINE").status_code == 200
 
-    transfers = client.get("/api/v1/me/transfers", headers=_auth(cbd["token"]))
+    transfers = client.get("/api/v1/transfers", headers=_auth(cbd["token"]))
     assert transfers.status_code == 200
     declined = transfers.json()["outgoing"][0]
     assert declined["status"] == "DECLINED"
