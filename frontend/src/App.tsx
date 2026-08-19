@@ -7,6 +7,7 @@ import {
   fetchRequestOptions,
   fetchStoreForecasts,
   fetchStoreInventory,
+  fetchTransferDetail,
   login,
   respondToTransfer,
 } from "./api.ts";
@@ -25,6 +26,7 @@ import type {
   RequestOptionsResponse,
   RespondAction,
   StoreInventoryResponse,
+  TransferDetail,
 } from "./types.ts";
 
 export default function App() {
@@ -48,6 +50,10 @@ export default function App() {
   const [respondError, setRespondError] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState<string | null>(null);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
+  const [transferDetail, setTransferDetail] = useState<TransferDetail | null>(null);
+  const [loadingTransferDetail, setLoadingTransferDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const retry = useCallback(() => {
     setError(null);
@@ -173,6 +179,63 @@ export default function App() {
       .finally(() => setSending(false));
   }
 
+  function getTransferIdFromPath(): string | null {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    if (parts.length >= 2 && parts[0] === "transfers") return parts[1];
+    return null;
+  }
+
+  function setTransferRoute(transferId: string | null) {
+    const nextPath = transferId ? `/transfers/${transferId}` : "/";
+    window.history.pushState({}, "", nextPath);
+  }
+
+  function handleOpenTransfer(transferId: string, syncUrl: boolean = true) {
+    if (syncUrl) setTransferRoute(transferId);
+    setSelectedTransferId(transferId);
+    setDetailError(null);
+    setLoadingTransferDetail(true);
+    fetchTransferDetail(transferId)
+      .then(setTransferDetail)
+      .catch((err: Error) => setDetailError(err.message))
+      .finally(() => setLoadingTransferDetail(false));
+  }
+
+  function handleCloseTransferDetail(syncUrl: boolean = true) {
+    if (syncUrl) setTransferRoute(null);
+    setSelectedTransferId(null);
+    setTransferDetail(null);
+    setDetailError(null);
+  }
+
+  function handleChangeView(nextView: HomeView) {
+    handleCloseTransferDetail();
+    setView(nextView);
+  }
+
+  useEffect(() => {
+    if (!session) return;
+    const transferId = getTransferIdFromPath();
+    if (transferId) {
+      if (transferId !== selectedTransferId) handleOpenTransfer(transferId, false);
+    } else if (selectedTransferId) {
+      handleCloseTransferDetail(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    const onPop = () => {
+      const transferId = getTransferIdFromPath();
+      if (transferId) handleOpenTransfer(transferId, false);
+      else handleCloseTransferDetail(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, selectedTransferId]);
+
   if (checkingSession) {
     return (
       <div className="shell">
@@ -246,6 +309,7 @@ export default function App() {
     const inTransitCount =
       outgoing.filter((r) => r.status === "IN_TRANSIT").length +
       incoming.filter((r) => r.status === "IN_TRANSIT" && r.my_status === "ACCEPTED").length;
+    const declinedCount = outgoing.filter((r) => r.status === "DECLINED").length;
 
     const nav = (
       <StoreNav
@@ -254,8 +318,9 @@ export default function App() {
         receivedCount={receivedCount}
         acceptedCount={acceptedCount}
         inTransitCount={inTransitCount}
+        declinedCount={declinedCount}
         outgoingCount={outgoing.length}
-        onChangeView={setView}
+        onChangeView={handleChangeView}
       />
     );
 
@@ -285,11 +350,11 @@ export default function App() {
         onRequestProduct={handleRequestProduct}
       />
     );
-    if (view !== "inventory") {
+    if (selectedTransferId) {
       const errorBanner =
-        respondError || dispatchError ? (
+        detailError || respondError || dispatchError ? (
           <p className="error" style={{ margin: "0 0 8px" }}>
-            {respondError ?? dispatchError}
+            {detailError ?? respondError ?? dispatchError}
           </p>
         ) : null;
       main = (
@@ -304,6 +369,39 @@ export default function App() {
             dispatching={dispatching}
             onRespond={handleRespond}
             onDispatch={handleDispatch}
+            onOpenTransfer={handleOpenTransfer}
+            selectedTransferId={selectedTransferId}
+            transferDetail={transferDetail}
+            loadingTransferDetail={loadingTransferDetail}
+            onCloseTransferDetail={handleCloseTransferDetail}
+          />
+        </>
+      );
+    }
+    if (view !== "inventory") {
+      const errorBanner =
+        respondError || dispatchError || detailError ? (
+          <p className="error" style={{ margin: "0 0 8px" }}>
+            {respondError ?? dispatchError ?? detailError}
+          </p>
+        ) : null;
+      main = (
+        <>
+          {errorBanner}
+          <TransferTables
+            mode={view}
+            outgoing={outgoing}
+            incoming={incoming}
+            myStoreId={current.store_id}
+            responding={responding}
+            dispatching={dispatching}
+            onRespond={handleRespond}
+            onDispatch={handleDispatch}
+            onOpenTransfer={handleOpenTransfer}
+            selectedTransferId={selectedTransferId}
+            transferDetail={transferDetail}
+            loadingTransferDetail={loadingTransferDetail}
+            onCloseTransferDetail={handleCloseTransferDetail}
           />
         </>
       );

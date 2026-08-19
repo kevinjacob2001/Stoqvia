@@ -9,6 +9,7 @@ import type {
   RespondAction,
   StoreForecastsResponse,
   StoreInventoryResponse,
+  TransferDetail,
 } from "./types.ts";
 
 const API_BASE = "/api/v1";
@@ -81,4 +82,8 @@ export function dispatchTransfer(transferId: string): Promise<OutgoingTransfer> 
   return requestJson<OutgoingTransfer>(`/me/transfers/${transferId}/dispatch`, {
     method: "POST",
   });
+}
+
+export function fetchTransferDetail(transferId: string): Promise<TransferDetail> {
+  return requestJson<TransferDetail>(`/me/transfers/${transferId}`);
 }

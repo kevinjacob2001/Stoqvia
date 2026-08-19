@@ -118,4 +118,22 @@ export type MyTransfersResponse = {
   incoming: IncomingTransfer[];
 };
 
+export type TransferDetail = {
+  transfer_id: string;
+  sku: string;
+  product_name: string;
+  qty: number;
+  status: string;
+  requester_store_name: string;
+  accepted_store_name: string | null;
+  my_status: string | null;
+  invited: InviteStatus[];
+  created_at: string | null;
+  accepted_at: string | null;
+  dispatched_at: string | null;
+  completed_at: string | null;
+  lead_days: number | null;
+  events: TransferEvent[];
+};
+
 export type RespondAction = "ACCEPT" | "DECLINE" | "CHECK_STOCK" | "CLEAR_CHECK";
