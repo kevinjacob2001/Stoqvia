@@ -1,5 +1,6 @@
 """Phase 6: Accept / Decline / Check stock tests."""
 
+from datetime import datetime, timedelta, timezone
 from typing import Iterator
 
 import pytest
@@ -69,6 +70,13 @@ def _respond(client, token, transfer_id, action):
         f"/api/v1/transfers/{transfer_id}/respond",
         headers=_auth(token),
         json={"action": action},
+    )
+
+
+def _contact_supplier(client, token: str, transfer_id: str):
+    return client.post(
+        f"/api/v1/transfers/{transfer_id}/contact-supplier",
+        headers=_auth(token),
     )
 
 
@@ -210,3 +218,39 @@ def test_all_declines_mark_request_declined(client: TestClient) -> None:
     declined = transfers.json()["outgoing"][0]
     assert declined["status"] == "DECLINED"
     assert any(event["action"] == "ALL_DECLINED" for event in declined["events"])
+
+
+def test_contact_supplier_moves_request_in_transit_then_completed(client: TestClient) -> None:
+    product_id, marion_id, mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
+
+    marion = _login(client, "admin.marion", "marion123")
+    mile = _login(client, "admin.mileend", "mileend123")
+    _respond(client, marion["token"], tid, "DECLINE")
+    _respond(client, mile["token"], tid, "DECLINE")
+
+    # Supplier contact by the requester
+    r = _contact_supplier(client, cbd["token"], tid)
+    assert r.status_code == 200
+    payload = r.json()
+    assert payload["status"] == "IN_TRANSIT"
+    assert payload["accepted_store_name"] == "Supplier"
+    assert any(ev["action"] == "SUPPLIER_CONTACTED" for ev in payload["events"])
+
+    # Force completion by backdating dispatched_at to now - lead_days
+    db = get_db()
+    from bson import ObjectId
+
+    doc = db.stock_transfers.find_one({"_id": ObjectId(tid)})
+    assert doc is not None
+    lead_days = int(doc["lead_days"])
+
+    now = datetime.now(timezone.utc)
+    db.stock_transfers.update_one(
+        {"_id": ObjectId(tid)},
+        {"$set": {"dispatched_at": now - timedelta(days=lead_days)}},
+    )
+
+    completed = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    assert completed["status"] == "COMPLETED"
