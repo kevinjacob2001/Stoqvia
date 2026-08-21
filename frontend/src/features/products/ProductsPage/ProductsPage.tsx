@@ -1,10 +1,11 @@
+import "./ProductsPage.css";
 import { useMemo, useState } from "react";
-import { MetricCard, PageHeader, SearchField, Tabs } from "../../components/ui/index.ts";
-import type { ActiveFulfillment } from "../../lib/fulfillments.ts";
-import type { ForecastResponse, StoreInventoryResponse } from "../../types.ts";
-import ProductDrawer from "./ProductDrawer.tsx";
-import { filterProducts, PRODUCT_TABS, summarizeRisk, type ProductTabKey } from "./productFilters.ts";
-import ProductsTable from "./ProductsTable.tsx";
+import { MetricCard, PageHeader, SearchField, Tabs } from "../../../components/ui/index.ts";
+import type { ActiveFulfillment } from "../../../lib/fulfillments.ts";
+import type { ForecastResponse, StoreInventoryResponse } from "../../../types.ts";
+import ProductDrawer from "../ProductDrawer/index.ts";
+import { filterProducts, PRODUCT_TABS, summarizeRisk, type ProductTabKey } from "../productFilters.ts";
+import ProductsTable from "../ProductsTable/index.ts";
 
 export type ProductsPageProps = {
   inventory: StoreInventoryResponse;

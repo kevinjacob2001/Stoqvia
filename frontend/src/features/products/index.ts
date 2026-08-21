@@ -1,2 +1,2 @@
-export { default as ProductsPage } from "./ProductsPage.tsx";
-export type { ProductsPageProps } from "./ProductsPage.tsx";
+export { default as ProductsPage } from "./ProductsPage/index.ts";
+export type { ProductsPageProps } from "./ProductsPage/ProductsPage.tsx";

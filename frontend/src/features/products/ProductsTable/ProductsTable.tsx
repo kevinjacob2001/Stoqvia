@@ -1,7 +1,8 @@
-import { Button, ProductThumb, RiskBadge } from "../../components/ui/index.ts";
-import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../lib/fulfillments.ts";
-import { stockToneFromRisk } from "../../lib/productDisplay.ts";
-import type { ForecastResponse, InventoryItem } from "../../types.ts";
+import "./ProductsTable.css";
+import { Button, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
+import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
+import { stockToneFromRisk } from "../../../lib/productDisplay.ts";
+import type { ForecastResponse, InventoryItem } from "../../../types.ts";
 
 type ProductsTableProps = {
   items: InventoryItem[];
