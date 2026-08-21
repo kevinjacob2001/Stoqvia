@@ -25,6 +25,7 @@ def _mongo_available() -> bool:
 def client() -> Iterator[TestClient]:
     db = get_db()
     db.stock_transfers.delete_many({})
+    db.purchase_orders.delete_many({})
     with TestClient(app) as test_client:
         yield test_client
     close_client()
@@ -235,8 +236,13 @@ def test_contact_supplier_moves_request_in_transit_then_completed(client: TestCl
     assert r.status_code == 200
     payload = r.json()
     assert payload["status"] == "IN_TRANSIT"
-    assert payload["accepted_store_name"] == "Supplier"
+    assert payload["purchase_order"] is not None
+    assert payload["purchase_order"]["status"] == "OPEN"
+    assert payload["purchase_order"]["po_id"]
+    assert payload["purchase_order"]["supplier_name"]
+    assert payload["accepted_store_name"] == payload["purchase_order"]["supplier_name"]
     assert any(ev["action"] == "SUPPLIER_CONTACTED" for ev in payload["events"])
+    assert any(ev["action"] == "PO_CREATED" for ev in payload["events"])
 
     # Force completion by backdating dispatched_at to now - lead_days
     db = get_db()
@@ -245,6 +251,7 @@ def test_contact_supplier_moves_request_in_transit_then_completed(client: TestCl
     doc = db.stock_transfers.find_one({"_id": ObjectId(tid)})
     assert doc is not None
     lead_days = int(doc["lead_days"])
+    po_id = doc["po_id"]
 
     now = datetime.now(timezone.utc)
     db.stock_transfers.update_one(
@@ -254,3 +261,9 @@ def test_contact_supplier_moves_request_in_transit_then_completed(client: TestCl
 
     completed = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
     assert completed["status"] == "COMPLETED"
+    assert completed["purchase_order"]["status"] == "RECEIVED"
+    assert any(ev["action"] == "PO_RECEIVED" for ev in completed["events"])
+
+    po = db.purchase_orders.find_one({"_id": po_id})
+    assert po is not None
+    assert po["status"] == "RECEIVED"
