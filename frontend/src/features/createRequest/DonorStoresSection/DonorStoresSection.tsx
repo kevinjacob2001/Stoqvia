@@ -1,5 +1,5 @@
 import type { DonorOption } from "../../../types.ts";
-import { forecastImpactLabel, leadTimeLabel } from "../requestHelpers.ts";
+import { leadTimeLabel, sendImpactLabel } from "../requestHelpers.ts";
 
 type DonorStoresSectionProps = {
   stores: DonorOption[];
@@ -52,14 +52,14 @@ export default function DonorStoresSection({
                 <th>Distance</th>
                 <th>Safe Surplus</th>
                 <th>Lead Time</th>
-                <th>Forecast Impact</th>
+                <th>Send impact</th>
                 <th className="num">Can send</th>
               </tr>
             </thead>
             <tbody>
               {stores.map((store) => {
                 const checked = selectedIds.includes(store.store_id);
-                const impact = forecastImpactLabel(store, needQty);
+                const impact = sendImpactLabel(store, needQty);
                 const safe = store.safe_surplus > 0;
                 return (
                   <tr key={store.store_id} className={checked ? "selected" : undefined}>
@@ -97,7 +97,7 @@ export default function DonorStoresSection({
         <strong>What is Safe Surplus?</strong>
         <p>
           Units a store can spare while staying LOW risk after the transfer (covers 7-day demand and a healthy
-          safety buffer).
+          safety buffer). Send impact is Low if they can cover the full request, Medium if only part, High if none.
         </p>
       </div>
     </section>

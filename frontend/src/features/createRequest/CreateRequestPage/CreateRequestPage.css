@@ -229,7 +229,6 @@
   font-size: 0.85rem;
 }
 
-.cr-impact.tone-minimal,
 .cr-impact.tone-low {
   color: var(--ok);
 }

@@ -6,15 +6,21 @@ export function leadTimeLabel(days: number): string {
   return dayCountLabel(days);
 }
 
-export function forecastImpactLabel(store: DonorOption, needQty: number): {
-  label: string;
-  tone: "minimal" | "low" | "medium" | "high";
+export function sendImpactLabel(store: DonorOption, needQty: number): {
+  label: "Low" | "Medium" | "High";
+  tone: "low" | "medium" | "high";
 } {
-  if (store.safe_surplus >= needQty) return { label: "Minimal", tone: "minimal" };
-  if (store.safe_surplus >= needQty * 0.5) return { label: "Low", tone: "low" };
-  if (store.safe_surplus > 0) return { label: "Medium", tone: "medium" };
+  // Frontend-only: how hard covering this request is for the donor, from backend safe_surplus.
+  // Not the same as product Risk (LOW/MEDIUM/HIGH from forecast classify_risk).
+  if (needQty <= 0 || store.safe_surplus >= needQty) {
+    return { label: "Low", tone: "low" };
+  }
+  if (store.safe_surplus > 0) {
+    return { label: "Medium", tone: "medium" };
+  }
   return { label: "High", tone: "high" };
 }
+
 
 export function flattenDonors(groups: { stores: DonorOption[] }[]): DonorOption[] {
   return groups.flatMap((group) => group.stores);
