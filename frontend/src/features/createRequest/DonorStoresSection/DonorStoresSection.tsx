@@ -1,5 +1,6 @@
+import { Fragment, useMemo } from "react";
 import type { DonorOption } from "../../../types.ts";
-import { leadTimeLabel, sendImpactLabel } from "../requestHelpers.ts";
+import { groupDonorsByDistance, leadTimeLabel, sendImpactLabel } from "../requestHelpers.ts";
 
 type DonorStoresSectionProps = {
   stores: DonorOption[];
@@ -18,6 +19,8 @@ export default function DonorStoresSection({
   onClear,
   onSelectAll,
 }: DonorStoresSectionProps) {
+  const bands = useMemo(() => groupDonorsByDistance(stores), [stores]);
+
   return (
     <section className="cr-card">
       <div className="cr-section-head">
@@ -38,7 +41,10 @@ export default function DonorStoresSection({
           </div>
         </div>
       </div>
-      <p className="cr-help">Only stores with safe surplus and within transfer eligibility are shown.</p>
+      <p className="cr-help">
+        Only stores with safe surplus are shown, grouped by distance (5 km, then 10 km, then 20 km). Empty bands are
+        hidden.
+      </p>
 
       {stores.length === 0 ? (
         <p className="status">No eligible donor stores for this product.</p>
@@ -57,37 +63,44 @@ export default function DonorStoresSection({
               </tr>
             </thead>
             <tbody>
-              {stores.map((store) => {
-                const checked = selectedIds.includes(store.store_id);
-                const impact = sendImpactLabel(store, needQty);
-                const safe = store.safe_surplus > 0;
-                return (
-                  <tr key={store.store_id} className={checked ? "selected" : undefined}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => onToggle(store.store_id)}
-                        aria-label={`Select ${store.store_name}`}
-                      />
-                    </td>
-                    <td>
-                      <strong>{store.store_name}</strong>
-                    </td>
-                    <td>{store.distance_km.toFixed(1)} km</td>
-                    <td>
-                      <span className={safe ? "cr-tag safe" : "cr-tag unsafe"}>
-                        {store.safe_surplus} · {safe ? "Safe" : "Unsafe"}
-                      </span>
-                    </td>
-                    <td>{leadTimeLabel(store.lead_days)}</td>
-                    <td>
-                      <span className={`cr-impact tone-${impact.tone}`}>{impact.label}</span>
-                    </td>
-                    <td className="num">{store.recommended_qty}</td>
+              {bands.map((band) => (
+                <Fragment key={band.key}>
+                  <tr className="cr-band-row">
+                    <td colSpan={7}>{band.label}</td>
                   </tr>
-                );
-              })}
+                  {band.stores.map((store) => {
+                    const checked = selectedIds.includes(store.store_id);
+                    const impact = sendImpactLabel(store, needQty);
+                    const safe = store.safe_surplus > 0;
+                    return (
+                      <tr key={store.store_id} className={checked ? "selected" : undefined}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => onToggle(store.store_id)}
+                            aria-label={`Select ${store.store_name}`}
+                          />
+                        </td>
+                        <td>
+                          <strong>{store.store_name}</strong>
+                        </td>
+                        <td>{store.distance_km.toFixed(1)} km</td>
+                        <td>
+                          <span className={safe ? "cr-tag safe" : "cr-tag unsafe"}>
+                            {store.safe_surplus} · {safe ? "Safe" : "Unsafe"}
+                          </span>
+                        </td>
+                        <td>{leadTimeLabel(store.lead_days)}</td>
+                        <td>
+                          <span className={`cr-impact tone-${impact.tone}`}>{impact.label}</span>
+                        </td>
+                        <td className="num">{Math.min(needQty, store.safe_surplus)}</td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>

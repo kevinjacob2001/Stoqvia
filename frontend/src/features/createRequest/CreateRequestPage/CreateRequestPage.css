@@ -170,6 +170,14 @@
   font-weight: 500;
 }
 
+.cr-qty-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
 .cr-notes-locked {
   border: 1px dashed var(--line);
   border-radius: 10px;
@@ -203,6 +211,18 @@
 
 .cr-donor-table tr.selected {
   background: var(--forest-soft);
+}
+
+.cr-band-row td {
+  background: #f3f7f5;
+  color: var(--forest-deep);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
 }
 
 .cr-tag {
