@@ -1,6 +1,6 @@
 .primary-button,
 .ghost-button,
-.retry-button,
+.danger-button,
 .icon-button {
   border-radius: 8px;
   padding: 8px 12px;
@@ -9,8 +9,7 @@
   font-weight: 600;
 }
 
-.primary-button,
-.retry-button {
+.primary-button {
   border: 1px solid var(--forest);
   background: var(--forest);
   color: #fff;
@@ -23,6 +22,12 @@
   color: var(--ink);
 }
 
+.danger-button {
+  border: 1px solid #f0b4b4;
+  background: #fff;
+  color: var(--danger);
+}
+
 .icon-button {
   width: 32px;
   height: 32px;
@@ -32,8 +37,8 @@
 }
 
 .primary-button:disabled,
-.retry-button:disabled,
-.ghost-button:disabled {
+.ghost-button:disabled,
+.danger-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

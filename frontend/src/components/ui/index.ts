@@ -6,4 +6,6 @@ export { default as PageHeader } from "./PageHeader/index.ts";
 export { default as Tabs } from "./Tabs/index.ts";
 export { default as ProductThumb } from "./ProductThumb/index.ts";
 export { default as Icon, ICON_PATHS } from "./Icon/index.ts";
-export { default as Modal } from "./Modal/index.ts";
+export { default as Avatar } from "./Avatar/index.ts";
+export { default as IdentityCell } from "./IdentityCell/index.ts";
+export { default as Pagination } from "./Pagination/index.ts";

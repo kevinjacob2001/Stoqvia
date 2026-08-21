@@ -1,0 +1,45 @@
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px 6px;
+  flex-wrap: wrap;
+}
+
+.pager-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.pager-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pager-btns button {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.pager-btns button.active {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #fff;
+}
+
+.pager-btns button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pager-ellipsis {
+  padding: 0 4px;
+  color: var(--muted);
+}

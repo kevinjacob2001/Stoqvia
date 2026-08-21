@@ -1,4 +1,5 @@
 import type { RiskLevel } from "../types.ts";
+import { initials } from "./initials.ts";
 
 export type StockTone = {
   label: string;
@@ -13,10 +14,5 @@ export function stockToneFromRisk(risk: RiskLevel | string | undefined): StockTo
 }
 
 export function productInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .toUpperCase();
+  return initials(name);
 }
