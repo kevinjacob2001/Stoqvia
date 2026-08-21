@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from pymongo.database import Database
 
 from app.db import get_db
+from app.config import get_settings
 from app.models.transfers import (
     ALLOC_COMPLETED,
     ALLOC_FULFILLED,
@@ -48,6 +49,29 @@ ACTIVE_FULFILLMENT_STATUSES = (STATUS_OPEN, STATUS_FULFILLED, STATUS_IN_TRANSIT)
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _supplier_lead_amount(db_lead_days: int) -> int:
+    """Supplier transit length. Testing override uses minutes; otherwise seed days."""
+    override = int(get_settings().supplier_lead_minutes)
+    if override > 0:
+        return override
+    return max(1, int(db_lead_days))
+
+
+def _supplier_uses_minutes() -> bool:
+    return int(get_settings().supplier_lead_minutes) > 0
+
+
+def _allocation_due_at(dispatched: datetime, alloc: dict) -> datetime:
+    lead = int(alloc["lead_days"])
+    if alloc.get("source") == ALLOC_SOURCE_SUPPLIER and _supplier_uses_minutes():
+        due = dispatched + timedelta(minutes=lead)
+    else:
+        due = dispatched + timedelta(days=lead)
+    if due.tzinfo is not None:
+        return due.replace(tzinfo=None)
+    return due
 
 
 def _store_names(db: Database) -> Dict[Any, str]:
@@ -218,15 +242,19 @@ def _best_supplier_for_product(db: Database, product_oid: Any) -> Optional[Dict[
         lead = link.get("lead_days")
         if lead is None:
             continue
-        lead_i = max(1, int(lead))
+        db_lead = max(1, int(lead))
+        lead_i = _supplier_lead_amount(db_lead)
         candidate = {
             "supplier_id": supplier_id,
             "supplier_name": supplier["name"],
             "lead_days": lead_i,
             "min_order_qty": max(1, int(supplier.get("min_order_qty", 1))),
+            "_rank_days": db_lead,
         }
-        if best is None or lead_i < best["lead_days"]:
+        if best is None or db_lead < best["_rank_days"]:
             best = candidate
+    if best is not None:
+        best.pop("_rank_days", None)
     return best
 
 
@@ -277,7 +305,10 @@ def _auto_escalate_remaining(db: Database, transfer_oid: ObjectId, doc: dict) ->
     now = _now()
     lead_days = int(supplier["lead_days"])
     po_qty = max(remaining, int(supplier["min_order_qty"]))
-    expected_date = (now + timedelta(days=lead_days)).replace(tzinfo=None)
+    if _supplier_uses_minutes():
+        expected_date = (now + timedelta(minutes=lead_days)).replace(tzinfo=None)
+    else:
+        expected_date = (now + timedelta(days=lead_days)).replace(tzinfo=None)
     allocation_id = ObjectId()
 
     po_result = db.purchase_orders.insert_one(
@@ -492,7 +523,7 @@ def complete_due_transfers(db: Optional[Database] = None) -> int:
                 continue
             if dispatched.tzinfo is not None:
                 dispatched = dispatched.replace(tzinfo=None)
-            if now_naive < dispatched + timedelta(days=int(alloc["lead_days"])):
+            if now_naive < _allocation_due_at(dispatched, alloc):
                 continue
             allocs[i] = {**alloc, "status": ALLOC_COMPLETED, "completed_at": now}
             changed = True

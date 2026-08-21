@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException, status
 from pymongo.database import Database
 
+from app.config import get_settings
 from app.db import get_db
 from app.models.forecast import calculate_safe_surplus
 from app.models.request_options import (
@@ -20,24 +21,35 @@ from app.services.geo import BAND_LABELS, BAND_ORDER, distance_km, radius_band, 
 from app.services.inventory_service import parse_object_id, _require
 
 
+def _supplier_lead_for_options(db_lead_days: int) -> int:
+    override = int(get_settings().supplier_lead_minutes)
+    if override > 0:
+        return override
+    return max(0, int(db_lead_days))
+
+
 def _best_supplier(db: Database, product_oid: Any, requested_qty: int) -> Optional[SupplierOption]:
     links = list(db.supplier_products.find({"product_id": product_oid}))
-    options: List[SupplierOption] = []
+    ranked: List[tuple[int, SupplierOption]] = []
     for link in links:
         supplier = db.suppliers.find_one({"_id": link["supplier_id"], "approved": True})
         if supplier is None:
             continue
-        options.append(
-            SupplierOption(
-                name=supplier["name"],
-                lead_days=int(link["lead_days"]),
-                recommended_qty=max(requested_qty, int(supplier["min_order_qty"])),
+        db_lead = int(link["lead_days"])
+        ranked.append(
+            (
+                db_lead,
+                SupplierOption(
+                    name=supplier["name"],
+                    lead_days=_supplier_lead_for_options(db_lead),
+                    recommended_qty=max(requested_qty, int(supplier["min_order_qty"])),
+                ),
             )
         )
-    if not options:
+    if not ranked:
         return None
-    options.sort(key=lambda item: (item.lead_days, item.name))
-    return options[0]
+    ranked.sort(key=lambda item: (item[0], item[1].name))
+    return ranked[0][1]
 
 
 def get_request_options(

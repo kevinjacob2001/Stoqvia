@@ -478,8 +478,10 @@ function AcceptedTable({
           footer={
             row.remaining_qty > 0
               ? `Other stores still need to cover ${row.remaining_qty} more units`
-              : row.lead_days != null
-                ? `Auto-completes ${row.lead_days} day${row.lead_days !== 1 ? "s" : ""} after dispatch`
+              : row.delivery_lead_days != null
+                ? `Auto-completes ${row.delivery_lead_days} day${row.delivery_lead_days !== 1 ? "s" : ""} after dispatch`
+                : row.lead_days != null
+                  ? `Auto-completes ${row.lead_days} day${row.lead_days !== 1 ? "s" : ""} after dispatch`
                 : undefined
           }
           actions={

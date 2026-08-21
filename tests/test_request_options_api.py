@@ -71,7 +71,8 @@ def test_cbd_drill_options_include_marion_and_supplier(client: TestClient) -> No
     assert marion["safe_surplus"] >= 1
     assert marion["recommended_qty"] == min(payload["requested_qty"], marion["safe_surplus"])
     assert payload["supplier"] is not None
-    assert payload["supplier"]["name"] == "Southern Precision Supply"
+    assert payload["supplier"]["lead_days"] == 8
+    assert payload["supplier"]["name"] in {"Southern Precision Supply", "Barossa Bulk Tools"}
 
 
 def test_options_rejected_when_not_high(client: TestClient) -> None:

@@ -318,6 +318,9 @@ def test_all_declines_auto_create_po_and_move_in_transit(client: TestClient) -> 
     assert detail["purchase_order"] is not None
     assert detail["purchase_order"]["status"] == "OPEN"
     assert detail["accepted_store_name"] == detail["purchase_order"]["supplier_name"]
+    assert detail["lead_days"] == 8
+    supplier_alloc = next(a for a in detail["allocations"] if a["source"] == "supplier")
+    assert supplier_alloc["lead_days"] == 8
 
 
 def test_all_declines_auto_po_then_completed(client: TestClient) -> None:
@@ -405,7 +408,7 @@ def test_store_accept_uses_distance_transit_not_supplier_lead(client: TestClient
     assert r.status_code == 200
     alloc = r.json()["my_allocation"]
     assert alloc is not None
-    # Marion is under 15 km from CBD → 1 day store transit (not supplier 3–14 days).
+    # Marion is under 15 km from CBD → 1 day store transit (not supplier lead days).
     assert alloc["lead_days"] == 1
 
 

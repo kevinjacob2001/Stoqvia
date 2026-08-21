@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     auth_token_hours: int = Field(default=12, alias="AUTH_TOKEN_HOURS")
     # Seconds between due-transfer completion sweeps. 0 disables the background job.
     auto_complete_interval_seconds: int = Field(default=30, alias="AUTO_COMPLETE_INTERVAL_SECONDS")
+    # When > 0, all supplier transit leads use this many minutes (testing). 0 = use DB lead_days as calendar days.
+    supplier_lead_minutes: int = Field(default=0, alias="SUPPLIER_LEAD_MINUTES")
 
 
 @lru_cache
