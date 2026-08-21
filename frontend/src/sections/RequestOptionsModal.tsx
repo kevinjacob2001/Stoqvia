@@ -76,7 +76,8 @@ export default function RequestOptionsModal({
                       <span className="donor-copy">
                         <strong>{store.store_name}</strong>
                         <small>
-                          {store.distance_km} km · Surplus {store.safe_surplus}
+                          {store.distance_km} km · ~{store.lead_days} day
+                          {store.lead_days !== 1 ? "s" : ""} transit · Surplus {store.safe_surplus}
                         </small>
                       </span>
                       <span className="num donor-qty">{store.recommended_qty}</span>

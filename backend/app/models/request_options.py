@@ -7,6 +7,7 @@ class DonorOption(BaseModel):
     store_id: str
     store_name: str
     distance_km: float
+    lead_days: int = Field(ge=1)
     safe_surplus: int
     recommended_qty: int = Field(ge=1)
 

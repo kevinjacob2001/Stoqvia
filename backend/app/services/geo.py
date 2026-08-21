@@ -15,6 +15,13 @@ BAND_LABELS = {
     BAND_OVER_30: "Over 30 km",
 }
 
+# Store-to-store road/transfer transit (not supplier lead time).
+TRANSIT_LEAD_DAYS_BY_BAND = {
+    BAND_UNDER_15: 1,
+    BAND_15_30: 2,
+    BAND_OVER_30: 3,
+}
+
 
 def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     phi1, phi2 = radians(lat1), radians(lat2)
@@ -30,3 +37,8 @@ def radius_band(distance: float) -> str:
     if distance <= 30:
         return BAND_15_30
     return BAND_OVER_30
+
+
+def transit_lead_days(distance: float) -> int:
+    """Estimated days for store-to-store delivery from distance."""
+    return TRANSIT_LEAD_DAYS_BY_BAND[radius_band(distance)]

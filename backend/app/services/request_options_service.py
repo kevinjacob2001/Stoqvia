@@ -16,7 +16,7 @@ from app.models.request_options import (
     SupplierOption,
 )
 from app.services import forecast_service
-from app.services.geo import BAND_LABELS, BAND_ORDER, distance_km, radius_band
+from app.services.geo import BAND_LABELS, BAND_ORDER, distance_km, radius_band, transit_lead_days
 from app.services.inventory_service import parse_object_id, _require
 
 
@@ -90,6 +90,7 @@ def get_request_options(
                 store_id=donor_forecast.store_id,
                 store_name=donor_forecast.store_name,
                 distance_km=kilometres,
+                lead_days=transit_lead_days(kilometres),
                 safe_surplus=surplus,
                 recommended_qty=min(requested_qty, surplus),
             )
