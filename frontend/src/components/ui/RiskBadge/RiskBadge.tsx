@@ -1,4 +1,4 @@
-import type { RiskLevel } from "../../types.ts";
+import type { RiskLevel } from "../../../types.ts";
 
 type RiskBadgeProps = {
   risk: RiskLevel | string;

@@ -1,3 +1,4 @@
+import "./Modal.css";
 import type { ReactNode } from "react";
 
 type ModalProps = {

@@ -1,3 +1,4 @@
+import "./SearchField.css";
 type SearchFieldProps = {
   value: string;
   onChange: (value: string) => void;

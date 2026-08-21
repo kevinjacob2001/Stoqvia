@@ -1,4 +1,5 @@
-import { productInitials } from "../../lib/productDisplay.ts";
+import "./ProductThumb.css";
+import { productInitials } from "../../../lib/productDisplay.ts";
 
 type ProductThumbProps = {
   name: string;

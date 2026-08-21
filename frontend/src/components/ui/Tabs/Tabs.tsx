@@ -1,3 +1,4 @@
+import "./Tabs.css";
 type TabItem<T extends string> = {
   key: T;
   label: string;

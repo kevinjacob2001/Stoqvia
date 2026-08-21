@@ -1,3 +1,4 @@
+import "./Button.css";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type ButtonVariant = "primary" | "ghost" | "icon";

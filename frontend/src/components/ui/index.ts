@@ -1,9 +1,9 @@
-export { default as Button } from "./Button.tsx";
-export { default as RiskBadge } from "./RiskBadge.tsx";
-export { default as MetricCard } from "./MetricCard.tsx";
-export { default as SearchField } from "./SearchField.tsx";
-export { default as PageHeader } from "./PageHeader.tsx";
-export { default as Tabs } from "./Tabs.tsx";
-export { default as ProductThumb } from "./ProductThumb.tsx";
-export { default as Icon, ICON_PATHS } from "./Icon.tsx";
-export { default as Modal } from "./Modal.tsx";
+export { default as Button } from "./Button/index.ts";
+export { default as RiskBadge } from "./RiskBadge/index.ts";
+export { default as MetricCard } from "./MetricCard/index.ts";
+export { default as SearchField } from "./SearchField/index.ts";
+export { default as PageHeader } from "./PageHeader/index.ts";
+export { default as Tabs } from "./Tabs/index.ts";
+export { default as ProductThumb } from "./ProductThumb/index.ts";
+export { default as Icon, ICON_PATHS } from "./Icon/index.ts";
+export { default as Modal } from "./Modal/index.ts";

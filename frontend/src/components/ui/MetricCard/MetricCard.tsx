@@ -1,3 +1,4 @@
+import "./MetricCard.css";
 type MetricTone = "green" | "blue" | "orange" | "purple";
 
 type MetricCardProps = {
