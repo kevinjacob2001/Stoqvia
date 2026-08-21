@@ -129,10 +129,12 @@ def _derive_status(doc: dict) -> str:
 
     if allocs and all(a["status"] == ALLOC_COMPLETED for a in allocs) and remaining == 0:
         return STATUS_COMPLETED
-    if any(a["status"] == ALLOC_IN_TRANSIT for a in allocs):
-        return STATUS_IN_TRANSIT
+    # Any store leg still awaiting dispatch keeps the parent FULFILLED, even if a
+    # supplier PO is already IN_TRANSIT — otherwise ops thinks everything shipped.
     if any(a["status"] == ALLOC_FULFILLED for a in allocs):
         return STATUS_FULFILLED
+    if any(a["status"] == ALLOC_IN_TRANSIT for a in allocs):
+        return STATUS_IN_TRANSIT
     if remaining == 0:
         return STATUS_FULFILLED
     return STATUS_OPEN
@@ -299,16 +301,23 @@ def _auto_escalate_remaining(db: Database, transfer_oid: ObjectId, doc: dict) ->
         "lead_days": lead_days,
         "po_id": po_result.inserted_id,
     }
+    # Do not stamp parent dispatched_at while a store still owes a dispatch.
+    pending_store_dispatch = any(
+        a.get("source") == ALLOC_SOURCE_STORE and a.get("status") == ALLOC_FULFILLED
+        for a in doc.get("allocations", [])
+    )
+    set_fields: Dict[str, Any] = {
+        "remaining_qty": 0,
+        "lead_days": lead_days,
+        "po_id": po_result.inserted_id,
+        "accepted_at": doc.get("accepted_at") or now,
+    }
+    if not pending_store_dispatch:
+        set_fields["dispatched_at"] = now
     db.stock_transfers.update_one(
         {"_id": transfer_oid},
         {
-            "$set": {
-                "remaining_qty": 0,
-                "dispatched_at": now,
-                "lead_days": lead_days,
-                "po_id": po_result.inserted_id,
-                "accepted_at": doc.get("accepted_at") or now,
-            },
+            "$set": set_fields,
             "$push": {"allocations": allocation},
         },
     )

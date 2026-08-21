@@ -167,11 +167,10 @@ def test_partial_accept_keeps_request_open_for_others(client: TestClient) -> Non
     assert r2.status_code == 200
     assert r2.json()["my_accepted_qty"] == cover
     # No invitees left: leftover need (if any) escalates to supplier → remaining 0.
+    # Parent stays FULFILLED while any store allocation still awaits dispatch.
     assert r2.json()["remaining_qty"] == 0
-    if cover == total - 1:
-        assert r2.json()["status"] == "FULFILLED"
-    else:
-        assert r2.json()["status"] == "IN_TRANSIT"
+    assert r2.json()["status"] == "FULFILLED"
+    if cover < total - 1:
         assert any(a["source"] == "supplier" for a in r2.json()["allocations"])
 
 
@@ -188,7 +187,9 @@ def test_partial_accept_then_decline_escalates_remainder_to_supplier(client: Tes
 
     detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
     assert detail["remaining_qty"] == 0
-    assert detail["status"] == "IN_TRANSIT"
+    # Supplier may already be shipping, but Marion still owes dispatch → FULFILLED.
+    assert detail["status"] == "FULFILLED"
+    assert detail["dispatched_at"] is None
     assert detail["purchase_order"] is not None
     assert detail["purchase_order"]["qty"] >= total - 1
     sources = {a["source"] for a in detail["allocations"]}
@@ -198,6 +199,15 @@ def test_partial_accept_then_decline_escalates_remainder_to_supplier(client: Tes
     assert store_alloc["status"] == "FULFILLED"
     supplier_alloc = next(a for a in detail["allocations"] if a["source"] == "supplier")
     assert supplier_alloc["status"] == "IN_TRANSIT"
+
+    # After the store dispatches, parent can move to IN_TRANSIT.
+    dispatched = client.post(
+        f"/api/v1/transfers/{tid}/dispatch",
+        headers=_auth(marion["token"]),
+    )
+    assert dispatched.status_code == 200
+    assert dispatched.json()["status"] == "IN_TRANSIT"
+    assert dispatched.json()["dispatched_at"] is not None
 
 
 def test_decline_local_others_unaffected(client: TestClient) -> None:
