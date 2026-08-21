@@ -1,3 +1,4 @@
+import "./LoginForm.css";
 type LoginFormProps = {
   error: string | null;
   submitting: boolean;

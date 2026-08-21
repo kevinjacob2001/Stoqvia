@@ -1,12 +1,13 @@
+import "./TransferTables.css";
 import type { ReactNode } from "react";
-import type { HomeView } from "../lib/routes.ts";
+import type { HomeView } from "../../lib/routes.ts";
 import type {
   IncomingTransfer,
   OutgoingTransfer,
   RespondAction,
   TransferDetail,
   TransferEvent,
-} from "../types.ts";
+} from "../../types.ts";
 
 type TransferTablesProps = {
   mode: HomeView;

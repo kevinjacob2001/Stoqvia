@@ -16,11 +16,11 @@ import { ProductsPage } from "./features/products/index.ts";
 import { AppShell } from "./layout/index.ts";
 import { buildActiveFulfillments } from "./lib/fulfillments.ts";
 import { pathToView, readRoute, writeRoute, type HomeView } from "./lib/routes.ts";
-import LoadError from "./sections/LoadError.tsx";
-import LoadingState from "./sections/LoadingState.tsx";
-import LoginForm from "./sections/LoginForm.tsx";
-import RequestOptionsModal from "./sections/RequestOptionsModal.tsx";
-import TransferTables from "./sections/TransferTables.tsx";
+import LoadError from "./sections/LoadError/index.ts";
+import LoadingState from "./sections/LoadingState/index.ts";
+import LoginForm from "./sections/LoginForm/index.ts";
+import RequestOptionsModal from "./sections/RequestOptionsModal/index.ts";
+import TransferTables from "./sections/TransferTables/index.ts";
 import type {
   ForecastResponse,
   MeResponse,

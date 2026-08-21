@@ -1,6 +1,7 @@
+import "./RequestOptionsModal.css";
 import { useState } from "react";
-import { Button, Modal, Tabs } from "../components/ui/index.ts";
-import type { RequestOptionsResponse } from "../types.ts";
+import { Button, Modal, Tabs } from "../../components/ui/index.ts";
+import type { RequestOptionsResponse } from "../../types.ts";
 
 type RequestOptionsModalProps = {
   options: RequestOptionsResponse;
