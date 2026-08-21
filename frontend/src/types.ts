@@ -43,6 +43,7 @@ export type DonorOption = {
   store_id: string;
   store_name: string;
   distance_km: number;
+  lead_days: number;
   safe_surplus: number;
   recommended_qty: number;
 };
@@ -124,6 +125,9 @@ export type IncomingTransfer = {
   my_status: string;
   my_accepted_qty: number | null;
   my_allocation: TransferAllocation | null;
+  delivery_lead_days: number | null;
+  max_accept_qty: number | null;
+  safe_surplus: number | null;
   all_invited: InviteStatus[];
   allocations: TransferAllocation[];
   status: string;

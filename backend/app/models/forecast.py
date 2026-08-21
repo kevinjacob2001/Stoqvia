@@ -39,5 +39,9 @@ def calculate_shortage(usable_stock: int, predicted_7d_demand: int, safety_stock
 
 
 def calculate_safe_surplus(usable_stock: int, predicted_7d_demand: int, safety_stock: int) -> int:
-    """Units a donor can spare after covering its own 7-day demand and safety stock."""
-    return usable_stock - predicted_7d_demand - safety_stock
+    """Units a donor can spare while staying LOW risk after the transfer.
+
+    LOW requires projected available (usable - demand) >= 2 * safety_stock.
+    So transferable qty is usable - demand - 2 * safety (floored at 0).
+    """
+    return max(0, usable_stock - predicted_7d_demand - (2 * safety_stock))

@@ -36,8 +36,11 @@ from app.models.transfers import (
     TransferEvent,
     TransferPurchaseOrder,
 )
+from app.models.forecast import calculate_safe_surplus
 from app.services.inventory_service import parse_object_id
+from app.services.geo import distance_km, transit_lead_days
 from app.services.request_options_service import get_request_options
+from app.services import forecast_service
 
 DEFAULT_LEAD_DAYS = 2
 ACTIVE_FULFILLMENT_STATUSES = (STATUS_OPEN, STATUS_FULFILLED, STATUS_IN_TRANSIT)
@@ -143,11 +146,61 @@ def _set_derived_status(db: Database, transfer_oid: ObjectId, doc: dict) -> None
     db.stock_transfers.update_one({"_id": transfer_oid}, {"$set": extra})
 
 
-def _get_lead_days(db: Database, store_oid: Any, product_oid: Any) -> int:
-    link = db.supplier_products.find_one({"product_id": product_oid})
-    if link and "lead_days" in link:
-        return max(1, int(link["lead_days"]))
-    return DEFAULT_LEAD_DAYS
+def _store_transit_lead_days(db: Database, from_store_oid: Any, to_store_oid: Any) -> int:
+    """Lead days for inter-store delivery based on distance (not supplier lead time)."""
+    origin = db.stores.find_one({"_id": from_store_oid})
+    dest = db.stores.find_one({"_id": to_store_oid})
+    if origin is None or dest is None:
+        return DEFAULT_LEAD_DAYS
+    kilometres = distance_km(
+        float(origin["latitude"]),
+        float(origin["longitude"]),
+        float(dest["latitude"]),
+        float(dest["longitude"]),
+    )
+    return transit_lead_days(kilometres)
+
+
+def _donor_safe_surplus(db: Database, store_id: str, product_id: str) -> int:
+    """Units this store can spare while remaining LOW risk after the transfer."""
+    forecast = forecast_service.get_forecast(store_id, product_id, db=db)
+    if forecast.risk != "LOW":
+        return 0
+    return max(
+        0,
+        calculate_safe_surplus(
+            forecast.current_usable_stock,
+            forecast.predicted_7d_demand,
+            forecast.safety_stock,
+        ),
+    )
+
+
+def _adjust_inventory(
+    db: Database,
+    store_oid: Any,
+    product_oid: Any,
+    *,
+    on_hand_delta: int = 0,
+    reserved_delta: int = 0,
+) -> None:
+    inv = db.inventory.find_one({"store_id": store_oid, "product_id": product_oid})
+    if inv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Inventory row not found for store/product",
+        )
+    new_on_hand = int(inv["on_hand"]) + on_hand_delta
+    new_reserved = int(inv["reserved"]) + reserved_delta
+    if new_on_hand < 0 or new_reserved < 0 or new_reserved > new_on_hand:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Inventory update would create an invalid stock state",
+        )
+    db.inventory.update_one(
+        {"_id": inv["_id"]},
+        {"$set": {"on_hand": new_on_hand, "reserved": new_reserved, "updated_at": _now()}},
+    )
 
 
 def _best_supplier_for_product(db: Database, product_oid: Any) -> Optional[Dict[str, Any]]:
@@ -311,20 +364,32 @@ def _build_outgoing(doc: dict, names: Dict[Any, str], sku: str, product_name: st
 
 
 def _build_incoming(
-    doc: dict, store_oid: Any, names: Dict[Any, str], sku: str, product_name: str
+    doc: dict, store_oid: Any, names: Dict[Any, str], sku: str, product_name: str, db: Optional[Database] = None
 ) -> IncomingTransfer:
     my_invite = next(inv for inv in doc["invited"] if inv["store_id"] == store_oid)
     my_alloc_doc = _find_store_allocation(doc, store_oid)
+    delivery_lead_days = None
+    safe_surplus = None
+    max_accept_qty = None
+    remaining = _remaining(doc)
+    if db is not None:
+        delivery_lead_days = _store_transit_lead_days(db, store_oid, doc["requester_store_id"])
+        if my_invite["status"] in (INVITE_PENDING, INVITE_CHECKING) and doc["status"] == STATUS_OPEN:
+            safe_surplus = _donor_safe_surplus(db, str(store_oid), str(doc["product_id"]))
+            max_accept_qty = min(remaining, safe_surplus) if safe_surplus > 0 and remaining > 0 else 0
     return IncomingTransfer(
         transfer_id=str(doc["_id"]),
         sku=sku,
         product_name=product_name,
         qty=int(doc["qty"]),
-        remaining_qty=_remaining(doc),
+        remaining_qty=remaining,
         requester_store_name=names.get(doc["requester_store_id"], ""),
         my_status=my_invite["status"],
         my_accepted_qty=int(my_invite["accepted_qty"]) if my_invite.get("accepted_qty") is not None else None,
         my_allocation=_build_allocation(my_alloc_doc, names) if my_alloc_doc else None,
+        delivery_lead_days=delivery_lead_days,
+        max_accept_qty=max_accept_qty,
+        safe_surplus=safe_surplus,
         all_invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
         allocations=[_build_allocation(a, names) for a in doc.get("allocations", [])],
         status=doc["status"],
@@ -422,6 +487,13 @@ def complete_due_transfers(db: Optional[Database] = None) -> int:
                 continue
             allocs[i] = {**alloc, "status": ALLOC_COMPLETED, "completed_at": now}
             changed = True
+            # Stock arrives at the requesting store.
+            _adjust_inventory(
+                database,
+                doc["requester_store_id"],
+                doc["product_id"],
+                on_hand_delta=int(alloc["qty"]),
+            )
             if alloc.get("po_id") is not None:
                 database.purchase_orders.update_one(
                     {"_id": alloc["po_id"]},
@@ -429,18 +501,15 @@ def complete_due_transfers(db: Optional[Database] = None) -> int:
                 )
                 _append_event(database, doc["_id"], "System", "PO_RECEIVED")
             _append_event(database, doc["_id"], "System", "RECEIVED")
+            completed_transfers += 1
         if changed:
             database.stock_transfers.update_one(
                 {"_id": doc["_id"]},
                 {"$set": {"allocations": allocs}},
             )
             refreshed = database.stock_transfers.find_one({"_id": doc["_id"]})
-            before = doc.get("status")
             if refreshed is not None:
                 _set_derived_status(database, doc["_id"], refreshed)
-                after = database.stock_transfers.find_one({"_id": doc["_id"]})
-                if after and after.get("status") == STATUS_COMPLETED and before != STATUS_COMPLETED:
-                    completed_transfers += 1
 
     for doc in legacy:
         dispatched = doc["dispatched_at"]
@@ -484,13 +553,6 @@ def create_transfer(
         )
 
     options = get_request_options(requester_store_id, product_id, db=database)
-    eligible = _eligible_donor_ids(options)
-    unknown = [sid for sid in unique_ids if sid not in eligible]
-    if unknown:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more stores cannot safely fulfil this request",
-        )
 
     requester_oid = parse_object_id(requester_store_id, "store_id")
     product_oid = parse_object_id(product_id, "product_id")
@@ -505,6 +567,14 @@ def create_transfer(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Stock is already requested or in transit for this product",
+        )
+
+    eligible = _eligible_donor_ids(options)
+    unknown = [sid for sid in unique_ids if sid not in eligible]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="One or more stores cannot safely fulfil this request",
         )
 
     now = _now()
@@ -643,15 +713,52 @@ def respond_to_transfer(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Nothing remaining to fulfil on this request",
             )
-        accept_qty = int(body.qty) if body.qty is not None else remaining
-        if accept_qty < 1 or accept_qty > remaining:
+
+        safe_surplus = _donor_safe_surplus(
+            database, str(responder_oid), str(doc["product_id"])
+        )
+        max_qty = min(remaining, safe_surplus)
+        if max_qty < 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Your store has no safe surplus available to transfer for this product",
+            )
+
+        accept_qty = int(body.qty) if body.qty is not None else max_qty
+        if accept_qty < 1 or accept_qty > max_qty:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Accept qty must be between 1 and {remaining}",
+                detail=(
+                    f"Accept qty must be between 1 and {max_qty} "
+                    f"(receiver still needs {remaining}; your safe surplus is {safe_surplus})"
+                ),
+            )
+
+        # Reserve stock now so usable/risk update immediately for the donor.
+        _adjust_inventory(
+            database,
+            responder_oid,
+            doc["product_id"],
+            reserved_delta=accept_qty,
+        )
+        # Confirm donor still LOW after reservation.
+        post = forecast_service.get_forecast(str(responder_oid), str(doc["product_id"]), db=database)
+        if post.risk != "LOW":
+            _adjust_inventory(
+                database,
+                responder_oid,
+                doc["product_id"],
+                reserved_delta=-accept_qty,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Accepting that qty would raise your store risk above LOW",
             )
 
         now = _now()
-        lead_days = _get_lead_days(database, responder_oid, doc["product_id"])
+        lead_days = _store_transit_lead_days(
+            database, responder_oid, doc["requester_store_id"]
+        )
         new_remaining = remaining - accept_qty
         allocation = {
             "allocation_id": ObjectId(),
@@ -696,7 +803,7 @@ def respond_to_transfer(
 
     doc = database.stock_transfers.find_one({"_id": transfer_oid})
     sku, product_name = _product_label(database, doc["product_id"])
-    return _build_incoming(doc, responder_oid, names, sku, product_name)
+    return _build_incoming(doc, responder_oid, names, sku, product_name, db=database)
 
 
 def dispatch_transfer(
@@ -729,6 +836,15 @@ def dispatch_transfer(
         )
 
     now = _now()
+    qty = int(alloc["qty"])
+    _adjust_inventory(
+        database,
+        dispatcher_oid,
+        doc["product_id"],
+        on_hand_delta=-qty,
+        reserved_delta=-qty,
+    )
+
     allocs = []
     for item in doc.get("allocations", []):
         if item.get("allocation_id") == alloc["allocation_id"]:
@@ -780,7 +896,7 @@ def list_my_transfers(
     incoming: List[IncomingTransfer] = []
     for doc in incoming_docs:
         sku, product_name = _product_label(database, doc["product_id"])
-        incoming.append(_build_incoming(doc, store_oid, names, sku, product_name))
+        incoming.append(_build_incoming(doc, store_oid, names, sku, product_name, db=database))
 
     return MyTransfersResponse(outgoing=outgoing, incoming=incoming)
 

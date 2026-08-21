@@ -95,6 +95,10 @@ class IncomingTransfer(BaseModel):
     my_status: str
     my_accepted_qty: Optional[int] = None
     my_allocation: Optional[TransferAllocation] = None
+    delivery_lead_days: Optional[int] = None
+    # Cap for Accept: min(remaining need, donor safe surplus). Null when not actionable.
+    max_accept_qty: Optional[int] = None
+    safe_surplus: Optional[int] = None
     all_invited: List[InviteStatus]
     allocations: List[TransferAllocation] = Field(default_factory=list)
     status: str = STATUS_OPEN

@@ -350,6 +350,18 @@ function ReceivedTable({
                       Partial progress — still need {row.remaining_qty} of {row.qty}
                     </small>
                   ) : null}
+                  {row.delivery_lead_days != null ? (
+                    <small style={{ display: "block", color: "#5b6b7c" }}>
+                      Your transit to {row.requester_store_name}: ~{row.delivery_lead_days} day
+                      {row.delivery_lead_days !== 1 ? "s" : ""}
+                    </small>
+                  ) : null}
+                  {row.max_accept_qty != null ? (
+                    <small style={{ display: "block", color: "#5b6b7c" }}>
+                      Safe to send up to {row.max_accept_qty} without raising your risk
+                      {row.safe_surplus != null ? ` (keeps you LOW; surplus ${row.safe_surplus})` : ""}
+                    </small>
+                  ) : null}
                 </td>
                 <td className="num">
                   <strong>{row.remaining_qty}</strong>
@@ -377,6 +389,8 @@ function ReceivedTable({
                     <ActionButtons
                       status={row.my_status}
                       remainingQty={row.remaining_qty}
+                      maxAcceptQty={row.max_accept_qty ?? 0}
+                      safeSurplus={row.safe_surplus ?? 0}
                       busy={responding === row.transfer_id}
                       onRespond={(action, qty) => onRespond(row.transfer_id, action, qty)}
                     />
@@ -704,32 +718,47 @@ function TransferCard({
 function ActionButtons({
   status,
   remainingQty,
+  maxAcceptQty,
+  safeSurplus,
   busy,
   onRespond,
 }: {
   status: string;
   remainingQty: number;
+  maxAcceptQty: number;
+  safeSurplus: number;
   busy: boolean;
   onRespond: (action: RespondAction, qty?: number) => void;
 }) {
   function handleAccept() {
+    if (maxAcceptQty < 1) {
+      window.alert(
+        "You have no safe surplus for this product, so you cannot accept this transfer.",
+      );
+      return;
+    }
     const raw = window.prompt(
-      `How many units can you fulfil? (1–${remainingQty})`,
-      String(remainingQty),
+      `How many units can you safely fulfil? (1–${maxAcceptQty})\n` +
+        `Receiver still needs ${remainingQty}. Max that keeps your risk LOW: ${safeSurplus}.`,
+      String(maxAcceptQty),
     );
     if (raw == null) return;
     const qty = Number.parseInt(raw, 10);
-    if (!Number.isFinite(qty) || qty < 1 || qty > remainingQty) {
-      window.alert(`Enter a whole number between 1 and ${remainingQty}.`);
+    if (!Number.isFinite(qty) || qty < 1 || qty > maxAcceptQty) {
+      window.alert(
+        `Enter a whole number between 1 and ${maxAcceptQty} (capped by need and your safe surplus).`,
+      );
       return;
     }
     onRespond("ACCEPT", qty);
   }
 
+  const acceptDisabled = busy || maxAcceptQty < 1;
+
   if (status === "CHECKING") {
     return (
       <>
-        <button className="retry-button" type="button" disabled={busy} onClick={handleAccept}>
+        <button className="retry-button" type="button" disabled={acceptDisabled} onClick={handleAccept}>
           Accept
         </button>
         <button className="ghost-button" type="button" disabled={busy} onClick={() => onRespond("CLEAR_CHECK")}>
@@ -743,7 +772,7 @@ function ActionButtons({
   }
   return (
     <>
-      <button className="retry-button" type="button" disabled={busy} onClick={handleAccept}>
+      <button className="retry-button" type="button" disabled={acceptDisabled} onClick={handleAccept}>
         Accept
       </button>
       <button className="ghost-button" type="button" disabled={busy} onClick={() => onRespond("CHECK_STOCK")}>
