@@ -1,7 +1,8 @@
+import "./SideNav.css";
 import type { ReactNode } from "react";
-import { Icon, ICON_PATHS } from "../components/ui/index.ts";
-import type { HomeView } from "../lib/routes.ts";
-import type { MeResponse } from "../types.ts";
+import { Icon, ICON_PATHS } from "../../components/ui/index.ts";
+import type { HomeView } from "../../lib/routes.ts";
+import type { MeResponse } from "../../types.ts";
 
 export type NavCounts = {
   receivedCount: number;
@@ -66,7 +67,8 @@ function SubLink({ item, current, onChangeView }: { item: NavLink; current: Home
 }
 
 export default function SideNav({ session, view, counts, onChangeView, onLogout }: SideNavProps) {
-  const requestsOpen = view === "received" || view === "transferred" || view === "declined";
+  const requestsOpen =
+    view === "received" || view === "transferred" || view === "declined" || view === "create_request";
   const fulfillOpen = view === "accepted" || view === "in_transit";
 
   const requestLinks: NavLink[] = [

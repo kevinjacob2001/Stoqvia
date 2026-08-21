@@ -1,7 +1,8 @@
+import "./AppShell.css";
 import type { ReactNode } from "react";
-import type { HomeView } from "../lib/routes.ts";
-import type { MeResponse } from "../types.ts";
-import SideNav, { type NavCounts } from "./SideNav.tsx";
+import type { HomeView } from "../../lib/routes.ts";
+import type { MeResponse } from "../../types.ts";
+import SideNav, { type NavCounts } from "../SideNav/index.ts";
 
 type AppShellProps = {
   session: MeResponse;

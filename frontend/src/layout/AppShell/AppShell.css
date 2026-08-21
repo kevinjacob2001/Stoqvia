@@ -1,0 +1,16 @@
+.app-frame {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.main-stage {
+  padding: 24px 28px 40px;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .app-frame {
+    grid-template-columns: 1fr;
+  }
+}
