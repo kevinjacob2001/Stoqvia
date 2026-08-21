@@ -15,10 +15,8 @@ type TransferTablesProps = {
   myStoreId: string;
   responding: string | null;
   dispatching: string | null;
-  contactingSupplier: string | null;
   onRespond: (transferId: string, action: RespondAction) => void;
   onDispatch: (transferId: string) => void;
-  onContactSupplier: (transferId: string) => void;
   onOpenTransfer: (transferId: string) => void;
   selectedTransferId: string | null;
   transferDetail: TransferDetail | null;
@@ -41,7 +39,7 @@ const STATUS_LABEL: Record<string, string> = {
   CLEAR_CHECK: "Stock review cleared",
   CHECK_STOCK: "Stock review started",
   ALL_DECLINED: "All invited stores declined",
-  SUPPLIER_CONTACTED: "Supplier contacted",
+  SUPPLIER_ESCALATED: "Escalated to supplier",
   PO_CREATED: "Purchase order created",
   PO_RECEIVED: "Purchase order received",
 };
@@ -157,14 +155,10 @@ function DetailButton({ onClick }: { onClick: () => void }) {
 function DetailPage({
   detail,
   loading,
-  contactingSupplier,
-  onContactSupplier,
   onClose,
 }: {
   detail: TransferDetail | null;
   loading: boolean;
-  contactingSupplier: string | null;
-  onContactSupplier: (transferId: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -244,19 +238,9 @@ function DetailPage({
             ) : null}
 
             {detail.status === "DECLINED" ? (
-              <div style={{ marginTop: 8 }}>
-                <p style={{ margin: "0 0 8px", color: "#b42318", fontSize: "0.85rem", fontWeight: 600 }}>
-                  Declined — no store will fulfil this request.
-                </p>
-                <button
-                  className="ghost-button"
-                  type="button"
-                  disabled={contactingSupplier === detail.transfer_id}
-                  onClick={() => onContactSupplier(detail.transfer_id)}
-                >
-                  Contact supplier
-                </button>
-              </div>
+              <p style={{ margin: "8px 0 0", color: "#b42318", fontSize: "0.85rem", fontWeight: 600 }}>
+                Declined — no store will fulfil this request, and no approved supplier is available.
+              </p>
             ) : null}
           </div>
 
@@ -519,13 +503,9 @@ function InTransitTable({
 
 function DeclinedTable({
   outgoing,
-  contactingSupplier,
-  onContactSupplier,
   onOpenTransfer,
 }: {
   outgoing: OutgoingTransfer[];
-  contactingSupplier: string | null;
-  onContactSupplier: (transferId: string) => void;
   onOpenTransfer: (id: string) => void;
 }) {
   const declined = outgoing.filter((row) => row.status === "DECLINED");
@@ -540,13 +520,15 @@ function DeclinedTable({
   return (
     <section className="panel">
       <h2>Declined requests</h2>
+      <p style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "#5b6b7c" }}>
+        Requests where all invited stores declined and no supplier could be assigned.
+      </p>
       <table>
         <thead>
           <tr>
             <th>Product</th>
             <th className="num">Qty</th>
             <th>Invited stores</th>
-            <th>Next action</th>
             <th></th>
           </tr>
         </thead>
@@ -566,16 +548,6 @@ function DeclinedTable({
                     <small style={{ color: "#5b6b7c" }}> — {label(inv.status)}</small>
                   </span>
                 ))}
-              </td>
-              <td>
-                <button
-                  className="ghost-button"
-                  type="button"
-                  disabled={contactingSupplier === row.transfer_id}
-                  onClick={() => onContactSupplier(row.transfer_id)}
-                >
-                  Contact supplier
-                </button>
               </td>
               <td>
                 <DetailButton onClick={() => onOpenTransfer(row.transfer_id)} />
@@ -734,10 +706,8 @@ export default function TransferTables({
   myStoreId: _myStoreId,
   responding,
   dispatching,
-  contactingSupplier,
   onRespond,
   onDispatch,
-  onContactSupplier,
   onOpenTransfer,
   selectedTransferId,
   transferDetail,
@@ -749,8 +719,6 @@ export default function TransferTables({
       <DetailPage
         detail={transferDetail}
         loading={loadingTransferDetail}
-        contactingSupplier={contactingSupplier}
-        onContactSupplier={onContactSupplier}
         onClose={onCloseTransferDetail}
       />
     );
@@ -779,14 +747,7 @@ export default function TransferTables({
     return <InTransitTable outgoing={outgoing} incoming={incoming} onOpenTransfer={onOpenTransfer} />;
   }
   if (mode === "declined") {
-    return (
-      <DeclinedTable
-        outgoing={outgoing}
-        contactingSupplier={contactingSupplier}
-        onContactSupplier={onContactSupplier}
-        onOpenTransfer={onOpenTransfer}
-      />
-    );
+    return <DeclinedTable outgoing={outgoing} onOpenTransfer={onOpenTransfer} />;
   }
   return <TransferredTable outgoing={outgoing} onOpenTransfer={onOpenTransfer} />;
 }

@@ -8,7 +8,6 @@ import {
   fetchStoreForecasts,
   fetchStoreInventory,
   fetchTransferDetail,
-  contactSupplier,
   login,
   respondToTransfer,
 } from "./api.ts";
@@ -55,8 +54,6 @@ export default function App() {
   const [transferDetail, setTransferDetail] = useState<TransferDetail | null>(null);
   const [loadingTransferDetail, setLoadingTransferDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [contactingSupplier, setContactingSupplier] = useState<string | null>(null);
-  const [contactSupplierError, setContactSupplierError] = useState<string | null>(null);
 
   const retry = useCallback(() => {
     setError(null);
@@ -180,15 +177,6 @@ export default function App() {
       })
       .catch((err: Error) => setSendError(err.message))
       .finally(() => setSending(false));
-  }
-
-  function handleContactSupplier(transferId: string) {
-    setContactSupplierError(null);
-    setContactingSupplier(transferId);
-    contactSupplier(transferId)
-      .then(() => setReloadKey((key) => key + 1))
-      .catch((err: Error) => setContactSupplierError(err.message))
-      .finally(() => setContactingSupplier(null));
   }
 
   function getTransferIdFromPath(): string | null {
@@ -364,9 +352,9 @@ export default function App() {
     );
     if (selectedTransferId) {
       const errorBanner =
-        detailError || respondError || dispatchError || contactSupplierError ? (
+        detailError || respondError || dispatchError ? (
           <p className="error" style={{ margin: "0 0 8px" }}>
-            {detailError ?? respondError ?? dispatchError ?? contactSupplierError}
+            {detailError ?? respondError ?? dispatchError}
           </p>
         ) : null;
       main = (
@@ -381,8 +369,6 @@ export default function App() {
             dispatching={dispatching}
             onRespond={handleRespond}
             onDispatch={handleDispatch}
-            contactingSupplier={contactingSupplier}
-            onContactSupplier={handleContactSupplier}
             onOpenTransfer={handleOpenTransfer}
             selectedTransferId={selectedTransferId}
             transferDetail={transferDetail}
@@ -394,9 +380,9 @@ export default function App() {
     }
     if (view !== "inventory") {
       const errorBanner =
-        respondError || dispatchError || detailError || contactSupplierError ? (
+        respondError || dispatchError || detailError ? (
           <p className="error" style={{ margin: "0 0 8px" }}>
-            {respondError ?? dispatchError ?? detailError ?? contactSupplierError}
+            {respondError ?? dispatchError ?? detailError}
           </p>
         ) : null;
       main = (
@@ -411,8 +397,6 @@ export default function App() {
             dispatching={dispatching}
             onRespond={handleRespond}
             onDispatch={handleDispatch}
-            contactingSupplier={contactingSupplier}
-            onContactSupplier={handleContactSupplier}
             onOpenTransfer={handleOpenTransfer}
             selectedTransferId={selectedTransferId}
             transferDetail={transferDetail}

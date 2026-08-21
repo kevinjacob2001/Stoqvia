@@ -87,9 +87,3 @@ export function dispatchTransfer(transferId: string): Promise<OutgoingTransfer> 
 export function fetchTransferDetail(transferId: string): Promise<TransferDetail> {
   return requestJson<TransferDetail>(`/transfers/${transferId}`);
 }
-
-export function contactSupplier(transferId: string): Promise<TransferDetail> {
-  return requestJson<TransferDetail>(`/transfers/${transferId}/contact-supplier`, {
-    method: "POST",
-  });
-}
