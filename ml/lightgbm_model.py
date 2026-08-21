@@ -10,14 +10,9 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 ARTIFACT_DIR = Path(__file__).resolve().parent / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "demand_lgbm.txt"
 META_PATH = ARTIFACT_DIR / "meta.json"
-METHOD = "lightgbm_recursive_7d"
 
 _model = None
 _meta: Optional[Dict[str, Any]] = None
-
-
-def artifact_paths() -> Tuple[Path, Path]:
-    return MODEL_PATH, META_PATH
 
 
 def model_available() -> bool:

@@ -123,10 +123,7 @@ export default function RequestOptionsModal({
             )}
             <div className="modal-actions">
               <button className="ghost-button" type="button" onClick={onClose}>
-                Cancel
-              </button>
-              <button className="retry-button" disabled type="button">
-                Create PO
+                Close
               </button>
             </div>
           </div>

@@ -36,10 +36,6 @@ header p {
   margin-bottom: 16px;
 }
 
-.app-header p {
-  margin: 0;
-}
-
 .ghost-button,
 .retry-button,
 .icon-button {
