@@ -118,6 +118,14 @@ export type MyTransfersResponse = {
   incoming: IncomingTransfer[];
 };
 
+export type TransferPurchaseOrder = {
+  po_id: string;
+  supplier_name: string;
+  qty: number;
+  status: string;
+  expected_date: string | null;
+};
+
 export type TransferDetail = {
   transfer_id: string;
   sku: string;
@@ -134,6 +142,7 @@ export type TransferDetail = {
   completed_at: string | null;
   lead_days: number | null;
   events: TransferEvent[];
+  purchase_order: TransferPurchaseOrder | null;
 };
 
 export type RespondAction = "ACCEPT" | "DECLINE" | "CHECK_STOCK" | "CLEAR_CHECK";

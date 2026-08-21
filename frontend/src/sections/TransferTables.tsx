@@ -41,6 +41,9 @@ const STATUS_LABEL: Record<string, string> = {
   CLEAR_CHECK: "Stock review cleared",
   CHECK_STOCK: "Stock review started",
   ALL_DECLINED: "All invited stores declined",
+  SUPPLIER_CONTACTED: "Supplier contacted",
+  PO_CREATED: "Purchase order created",
+  PO_RECEIVED: "Purchase order received",
 };
 
 function label(s: string) {
@@ -265,6 +268,30 @@ function DetailPage({
               </div>
             ))}
           </div>
+          {detail.purchase_order ? (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>
+                Purchase order
+              </p>
+              <div style={{ fontSize: "0.85rem", color: "#5b6b7c" }}>
+                <div>
+                  PO ID: <span style={{ color: "#102033" }}>{detail.purchase_order.po_id}</span>
+                </div>
+                <div>
+                  Supplier: <span style={{ color: "#102033" }}>{detail.purchase_order.supplier_name}</span>
+                </div>
+                <div>
+                  Qty: <span style={{ color: "#102033" }}>{detail.purchase_order.qty}</span>
+                </div>
+                <div>
+                  Status: <span style={{ color: "#102033" }}>{detail.purchase_order.status}</span>
+                </div>
+                <div>
+                  Expected: <span style={{ color: "#102033" }}>{fmt(detail.purchase_order.expected_date)}</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <EventTimeline events={detail.events} />
         </>
       ) : null}
