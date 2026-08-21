@@ -119,6 +119,53 @@ def _load_purchase_order(db: Database, po_id: Any) -> Optional[TransferPurchaseO
     )
 
 
+def _auto_escalate_to_supplier(db: Database, transfer_oid: ObjectId, doc: dict) -> None:
+    """After all invitees decline: create PO and move to IN_TRANSIT (inventory-agnostic).
+
+    If no approved supplier exists, leave the transfer as DECLINED.
+    """
+    _append_event(db, transfer_oid, "system", "ALL_DECLINED")
+
+    supplier = _best_supplier_for_product(db, doc["product_id"])
+    if supplier is None:
+        db.stock_transfers.update_one(
+            {"_id": transfer_oid},
+            {"$set": {"status": STATUS_DECLINED}},
+        )
+        return
+
+    now = _now()
+    lead_days = int(supplier["lead_days"])
+    po_qty = max(int(doc["qty"]), int(supplier["min_order_qty"]))
+    expected_date = (now + timedelta(days=lead_days)).replace(tzinfo=None)
+
+    po_result = db.purchase_orders.insert_one(
+        {
+            "supplier_id": supplier["supplier_id"],
+            "store_id": doc["requester_store_id"],
+            "product_id": doc["product_id"],
+            "qty": po_qty,
+            "expected_date": expected_date,
+            "status": "OPEN",
+        }
+    )
+
+    db.stock_transfers.update_one(
+        {"_id": transfer_oid},
+        {
+            "$set": {
+                "status": STATUS_IN_TRANSIT,
+                "accepted_at": now,
+                "dispatched_at": now,
+                "lead_days": lead_days,
+                "po_id": po_result.inserted_id,
+            }
+        },
+    )
+    _append_event(db, transfer_oid, "system", "SUPPLIER_ESCALATED")
+    _append_event(db, transfer_oid, "system", "PO_CREATED")
+
+
 def _append_event(db: Database, transfer_oid: ObjectId, actor: str, action: str) -> None:
     db.stock_transfers.update_one(
         {"_id": transfer_oid},
@@ -370,11 +417,7 @@ def respond_to_transfer(
         _append_event(database, transfer_oid, actor_name, "DECLINED")
         doc = database.stock_transfers.find_one({"_id": transfer_oid})
         if doc is not None and all(inv["status"] == INVITE_DECLINED for inv in doc["invited"]):
-            database.stock_transfers.update_one(
-                {"_id": transfer_oid},
-                {"$set": {"status": STATUS_DECLINED}},
-            )
-            _append_event(database, transfer_oid, "system", "ALL_DECLINED")
+            _auto_escalate_to_supplier(database, transfer_oid, doc)
 
     elif action == "CHECK_STOCK":
         if current_status != INVITE_PENDING:
@@ -552,79 +595,3 @@ def get_transfer_detail(
     names = _store_names(database)
     sku, product_name = _product_label(database, doc["product_id"])
     return _build_detail(doc, viewer_store_oid, names, sku, product_name, db=database)
-
-
-def contact_supplier_transfer(
-    transfer_id: str,
-    requester_store_id: str,
-    db: Optional[Database] = None,
-) -> TransferDetail:
-    """Move a fully-declined request into supplier fulfilment.
-
-    Supplier fulfilment is inventory-agnostic: we do not validate donor stock.
-    Creates a purchase order linked to the transfer.
-    """
-    database = db if db is not None else get_db()
-    _maybe_auto_complete(database)
-
-    try:
-        transfer_oid = ObjectId(transfer_id)
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid transfer_id")
-
-    requester_oid = parse_object_id(requester_store_id, "store_id")
-    doc = database.stock_transfers.find_one({"_id": transfer_oid})
-    if doc is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
-
-    if doc["requester_store_id"] != requester_oid:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only requester can contact supplier")
-
-    if doc.get("status") != STATUS_DECLINED:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transfer is not in a declinable state")
-
-    supplier = _best_supplier_for_product(database, doc["product_id"])
-    if supplier is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No approved supplier available for this product",
-        )
-
-    now = _now()
-    lead_days = int(supplier["lead_days"])
-    po_qty = max(int(doc["qty"]), int(supplier["min_order_qty"]))
-    expected_date = (now + timedelta(days=lead_days)).replace(tzinfo=None)
-
-    po_result = database.purchase_orders.insert_one(
-        {
-            "supplier_id": supplier["supplier_id"],
-            "store_id": requester_oid,
-            "product_id": doc["product_id"],
-            "qty": po_qty,
-            "expected_date": expected_date,
-            "status": "OPEN",
-        }
-    )
-
-    database.stock_transfers.update_one(
-        {"_id": transfer_oid},
-        {
-            "$set": {
-                "status": STATUS_IN_TRANSIT,
-                "accepted_at": now,
-                "dispatched_at": now,
-                "lead_days": lead_days,
-                "po_id": po_result.inserted_id,
-            }
-        },
-    )
-
-    names = _store_names(database)
-    actor_name = names.get(requester_oid, requester_store_id)
-    _append_event(database, transfer_oid, actor_name, "SUPPLIER_CONTACTED")
-    _append_event(database, transfer_oid, "system", "PO_CREATED")
-
-    # Re-fetch for response
-    doc = database.stock_transfers.find_one({"_id": transfer_oid})
-    sku, product_name = _product_label(database, doc["product_id"])
-    return _build_detail(doc, requester_oid, names, sku, product_name, db=database)
