@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, ConfirmModal, PageHeader } from "../../../components/ui/index.ts";
 import type { InventoryItem, RequestOptionsResponse } from "../../../types.ts";
 import DonorStoresSection from "../DonorStoresSection/index.ts";
-import { flattenDonors } from "../requestHelpers.ts";
+import { clampRequestQty, coverageSplit, flattenDonors } from "../requestHelpers.ts";
 import RequestProductSection from "../RequestProductSection/index.ts";
 import RequestSummaryPanel from "../RequestSummaryPanel/index.ts";
 import SupplierFallbackSection from "../SupplierFallbackSection/index.ts";
@@ -14,7 +14,7 @@ export type CreateRequestPageProps = {
   sending: boolean;
   sendError: string | null;
   onCancel: () => void;
-  onBroadcast: (storeIds: string[]) => void;
+  onBroadcast: (storeIds: string[], qty: number) => void;
 };
 
 export default function CreateRequestPage({
@@ -25,18 +25,20 @@ export default function CreateRequestPage({
   onCancel,
   onBroadcast,
 }: CreateRequestPageProps) {
+  const maxQty = Math.max(1, options.requested_qty);
   const stores = useMemo(() => flattenDonors(options.nearby_groups), [options.nearby_groups]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [qty, setQty] = useState(options.requested_qty);
+  const [qty, setQty] = useState(() => clampRequestQty(options.requested_qty, maxQty));
   const [confirmBroadcast, setConfirmBroadcast] = useState(false);
 
   useEffect(() => {
     setSelectedIds(stores.map((store) => store.store_id));
-    setQty(options.requested_qty);
+    setQty(clampRequestQty(options.requested_qty, Math.max(1, options.requested_qty)));
   }, [options.product_id, options.requested_qty, stores]);
 
   const selectedStores = stores.filter((store) => selectedIds.includes(store.store_id));
   const storeCount = selectedIds.length;
+  const { networkCover, supplierRemainder } = coverageSplit(qty, selectedStores);
 
   function toggle(storeId: string) {
     setSelectedIds((current) =>
@@ -64,6 +66,7 @@ export default function CreateRequestPage({
             options={options}
             inventoryItem={inventoryItem}
             qty={qty}
+            maxQty={maxQty}
             onQtyChange={setQty}
           />
           <DonorStoresSection
@@ -74,7 +77,7 @@ export default function CreateRequestPage({
             onClear={() => setSelectedIds([])}
             onSelectAll={() => setSelectedIds(stores.map((store) => store.store_id))}
           />
-          <SupplierFallbackSection supplier={options.supplier} />
+          <SupplierFallbackSection supplier={options.supplier} supplierRemainder={supplierRemainder} />
 
           {sendError ? <p className="error">{sendError}</p> : null}
 
@@ -112,14 +115,20 @@ export default function CreateRequestPage({
             <strong>
               {storeCount} store{storeCount === 1 ? "" : "s"}
             </strong>
-            . Invited stores can accept, decline, or review stock.
+            . Selected stores can cover up to <strong>{networkCover}</strong> units
+            {supplierRemainder > 0 ? (
+              <>
+                ; about <strong>{supplierRemainder}</strong> may go to supplier if needed
+              </>
+            ) : null}
+            .
           </p>
         }
         confirmLabel={`Broadcast to ${storeCount} store${storeCount === 1 ? "" : "s"}`}
         busy={sending}
         onCancel={() => setConfirmBroadcast(false)}
         onConfirm={() => {
-          onBroadcast(selectedIds);
+          onBroadcast(selectedIds, qty);
           setConfirmBroadcast(false);
         }}
       />

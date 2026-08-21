@@ -596,6 +596,7 @@ def create_transfer(
     requester_store_id: str,
     product_id: str,
     donor_store_ids: List[str],
+    qty: Optional[int] = None,
     db: Optional[Database] = None,
 ) -> OutgoingTransfer:
     database = db if db is not None else get_db()
@@ -637,7 +638,18 @@ def create_transfer(
         )
 
     now = _now()
-    qty = int(options.requested_qty)
+    max_qty = int(options.requested_qty)
+    if max_qty < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No shortage to request for this product",
+        )
+    request_qty = int(qty) if qty is not None else max_qty
+    if request_qty < 1 or request_qty > max_qty:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Request qty must be between 1 and {max_qty} (predicted shortage)",
+        )
     invited = [
         {"store_id": parse_object_id(sid, "store_id"), "status": INVITE_PENDING}
         for sid in unique_ids
@@ -646,8 +658,8 @@ def create_transfer(
         {
             "product_id": product_oid,
             "requester_store_id": requester_oid,
-            "qty": qty,
-            "remaining_qty": qty,
+            "qty": request_qty,
+            "remaining_qty": request_qty,
             "status": STATUS_OPEN,
             "created_at": now,
             "invited": invited,

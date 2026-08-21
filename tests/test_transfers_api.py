@@ -156,6 +156,41 @@ def test_create_transfer_requires_auth(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+def test_create_transfer_qty_capped_at_shortage(client: TestClient) -> None:
+    product_id, marion_id, mile_id, _ = _drill_and_stores()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    options = client.get(
+        f"/api/v1/me/products/{product_id}/request-options",
+        headers=_auth(cbd["token"]),
+    )
+    assert options.status_code == 200
+    shortage = options.json()["requested_qty"]
+    assert shortage >= 1
+
+    too_high = client.post(
+        "/api/v1/transfers",
+        headers=_auth(cbd["token"]),
+        json={
+            "product_id": product_id,
+            "donor_store_ids": [marion_id, mile_id],
+            "qty": shortage + 100000,
+        },
+    )
+    assert too_high.status_code == 400
+
+    created = client.post(
+        "/api/v1/transfers",
+        headers=_auth(cbd["token"]),
+        json={
+            "product_id": product_id,
+            "donor_store_ids": [marion_id, mile_id],
+            "qty": max(1, shortage - 1) if shortage > 1 else 1,
+        },
+    )
+    assert created.status_code == 200
+    assert created.json()["qty"] == (shortage - 1 if shortage > 1 else 1)
+
+
 def test_transfer_detail_visible_to_requester(client: TestClient) -> None:
     product_id, marion_id, mile_id, _ = _drill_and_stores()
     cbd = _login(client, "admin.cbd", "cbd123")

@@ -28,7 +28,9 @@ def create_transfer(
     token: str = Depends(require_token),
 ) -> OutgoingTransfer:
     me = auth_service.get_me(token)
-    return transfer_service.create_transfer(me.store_id, body.product_id, body.donor_store_ids)
+    return transfer_service.create_transfer(
+        me.store_id, body.product_id, body.donor_store_ids, qty=body.qty
+    )
 
 
 @router.post("/transfers/jobs/complete-due")

@@ -241,13 +241,13 @@ export default function App() {
       .finally(() => setDispatching(null));
   }
 
-  function handleSendTransfer(storeIds: string[]) {
+  function handleSendTransfer(storeIds: string[], qty: number) {
     if (!options) {
       return;
     }
     setSendError(null);
     setSending(true);
-    createTransfer(options.product_id, storeIds)
+    createTransfer(options.product_id, storeIds, qty)
       .then(() => {
         setOptions(null);
         writeRoute("requests");

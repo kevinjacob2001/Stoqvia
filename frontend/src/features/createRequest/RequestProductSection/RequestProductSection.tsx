@@ -1,10 +1,12 @@
 import { Button, ProductThumb } from "../../../components/ui/index.ts";
 import type { InventoryItem, RequestOptionsResponse } from "../../../types.ts";
+import { clampRequestQty } from "../requestHelpers.ts";
 
 type RequestProductSectionProps = {
   options: RequestOptionsResponse;
   inventoryItem?: InventoryItem;
   qty: number;
+  maxQty: number;
   onQtyChange: (qty: number) => void;
 };
 
@@ -12,9 +14,11 @@ export default function RequestProductSection({
   options,
   inventoryItem,
   qty,
+  maxQty,
   onQtyChange,
 }: RequestProductSectionProps) {
   const onHand = inventoryItem?.on_hand ?? null;
+  const setQty = (value: number) => onQtyChange(clampRequestQty(value, maxQty));
 
   return (
     <section className="cr-card">
@@ -45,7 +49,7 @@ export default function RequestProductSection({
             <Button
               variant="ghost"
               disabled={qty <= 1}
-              onClick={() => onQtyChange(Math.max(1, qty - 1))}
+              onClick={() => setQty(qty - 1)}
               aria-label="Decrease quantity"
             >
               −
@@ -53,22 +57,27 @@ export default function RequestProductSection({
             <input
               type="number"
               min={1}
+              max={maxQty}
               value={qty}
-              onChange={(event) => onQtyChange(Math.max(1, Number(event.target.value) || 1))}
+              onChange={(event) => setQty(Number(event.target.value))}
             />
-            <Button variant="ghost" onClick={() => onQtyChange(qty + 1)} aria-label="Increase quantity">
+            <Button
+              variant="ghost"
+              disabled={qty >= maxQty}
+              onClick={() => setQty(qty + 1)}
+              aria-label="Increase quantity"
+            >
               +
             </Button>
             <span className="cr-unit">units</span>
           </div>
+          <small className="cr-qty-hint">Max {maxQty} units (predicted shortage)</small>
         </label>
       </div>
 
       <label className="cr-field cr-notes">
         <span>Notes (optional)</span>
-        <div className="cr-notes-locked">
-          Currently disabled
-        </div>
+        <div className="cr-notes-locked">Currently disabled</div>
       </label>
     </section>
   );

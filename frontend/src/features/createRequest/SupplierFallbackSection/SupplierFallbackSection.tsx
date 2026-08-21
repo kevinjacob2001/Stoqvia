@@ -3,9 +3,13 @@ import { leadTimeLabel } from "../requestHelpers.ts";
 
 type SupplierFallbackSectionProps = {
   supplier: SupplierOption | null;
+  supplierRemainder: number;
 };
 
-export default function SupplierFallbackSection({ supplier }: SupplierFallbackSectionProps) {
+export default function SupplierFallbackSection({
+  supplier,
+  supplierRemainder,
+}: SupplierFallbackSectionProps) {
   return (
     <section className="cr-card">
       <div className="cr-section-head">
@@ -13,7 +17,10 @@ export default function SupplierFallbackSection({ supplier }: SupplierFallbackSe
         <div>
           <h2>Supplier Fallback</h2>
           <p className="cr-help">
-            If none of the selected stores can fulfil, this supplier will be considered automatically.
+            After invited stores respond, any leftover need escalates to this supplier automatically.
+            {supplierRemainder > 0
+              ? ` Right now about ${supplierRemainder} units would remain after selected store surplus.`
+              : " Selected stores currently have enough surplus to cover this request."}
           </p>
         </div>
       </div>
@@ -25,7 +32,10 @@ export default function SupplierFallbackSection({ supplier }: SupplierFallbackSe
             <div>
               <strong>{supplier.name}</strong>
               <small>
-                Preferred · Order qty {supplier.recommended_qty}
+                Preferred
+                {supplierRemainder > 0
+                  ? ` · About ${supplierRemainder} units if stores cannot cover`
+                  : " · No leftover expected from current surplus"}
               </small>
             </div>
           </div>

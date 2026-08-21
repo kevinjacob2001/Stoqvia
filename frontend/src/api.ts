@@ -70,10 +70,15 @@ export function fetchMyTransfers(): Promise<MyTransfersResponse> {
 export function createTransfer(
   productId: string,
   donorStoreIds: string[],
+  qty?: number,
 ): Promise<OutgoingTransfer> {
   return requestJson<OutgoingTransfer>("/transfers", {
     method: "POST",
-    body: JSON.stringify({ product_id: productId, donor_store_ids: donorStoreIds }),
+    body: JSON.stringify({
+      product_id: productId,
+      donor_store_ids: donorStoreIds,
+      ...(qty != null ? { qty } : {}),
+    }),
   });
 }
 

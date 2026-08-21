@@ -1,5 +1,5 @@
 import type { DonorOption, RequestOptionsResponse, SupplierOption } from "../../../types.ts";
-import { leadTimeLabel } from "../requestHelpers.ts";
+import { coverageSplit, leadTimeLabel } from "../requestHelpers.ts";
 
 type RequestSummaryPanelProps = {
   options: RequestOptionsResponse;
@@ -14,7 +14,7 @@ export default function RequestSummaryPanel({
   selectedStores,
   supplier,
 }: RequestSummaryPanelProps) {
-  const totalSurplus = selectedStores.reduce((sum, store) => sum + store.safe_surplus, 0);
+  const { totalSurplus, networkCover, supplierRemainder } = coverageSplit(qty, selectedStores);
   const nearest = [...selectedStores].sort((a, b) => a.distance_km - b.distance_km)[0];
   const bestLead = selectedStores.length
     ? Math.min(...selectedStores.map((store) => store.lead_days))
@@ -40,6 +40,14 @@ export default function RequestSummaryPanel({
           <div>
             <dt>Quantity</dt>
             <dd>{qty} units</dd>
+          </div>
+          <div>
+            <dt>Stores can cover</dt>
+            <dd className="stock-ok">up to {networkCover} units</dd>
+          </div>
+          <div>
+            <dt>Supplier leftover</dt>
+            <dd>{supplierRemainder > 0 ? `${supplierRemainder} units` : "None"}</dd>
           </div>
           <div>
             <dt>Stores</dt>
@@ -84,9 +92,13 @@ export default function RequestSummaryPanel({
         <h3>Next Steps</h3>
         <ol className="cr-next-steps">
           <li>Broadcast to selected stores</li>
-          <li>Stores accept, decline, or review stock</li>
+          <li>Stores accept up to their safe surplus</li>
           <li>Accepted qty is reserved, then dispatched</li>
-          <li>Leftover need escalates to supplier automatically</li>
+          <li>
+            {supplierRemainder > 0
+              ? `About ${supplierRemainder} units may escalate to supplier if stores cannot cover`
+              : "Selected stores can cover the full request if they all accept"}
+          </li>
         </ol>
       </section>
     </aside>
