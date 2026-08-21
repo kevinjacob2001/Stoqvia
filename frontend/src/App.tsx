@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   createTransfer,
   dispatchTransfer,
@@ -12,12 +12,14 @@ import {
   respondToTransfer,
 } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
-import InventoryTable, { buildActiveFulfillments } from "./sections/InventoryTable.tsx";
+import { ProductsPage } from "./features/products/index.ts";
+import { AppShell } from "./layout/index.ts";
+import { buildActiveFulfillments } from "./lib/fulfillments.ts";
+import { pathToView, readRoute, writeRoute, type HomeView } from "./lib/routes.ts";
 import LoadError from "./sections/LoadError.tsx";
 import LoadingState from "./sections/LoadingState.tsx";
 import LoginForm from "./sections/LoginForm.tsx";
 import RequestOptionsModal from "./sections/RequestOptionsModal.tsx";
-import StoreNav, { pathToView, VIEW_PATHS, type HomeView } from "./sections/StoreNav.tsx";
 import TransferTables from "./sections/TransferTables.tsx";
 import type {
   ForecastResponse,
@@ -28,25 +30,6 @@ import type {
   StoreInventoryResponse,
   TransferDetail,
 } from "./types.ts";
-
-function readRoute(): { view: HomeView; transferId: string | null } {
-  const view = pathToView(window.location.pathname);
-  const transferId = new URLSearchParams(window.location.search).get("id");
-  return { view, transferId };
-}
-
-function writeRoute(view: HomeView, transferId: string | null = null, replace: boolean = false) {
-  const path = VIEW_PATHS[view];
-  const next = transferId ? `${path}?id=${encodeURIComponent(transferId)}` : path;
-  if (`${window.location.pathname}${window.location.search}` === next) {
-    return;
-  }
-  if (replace) {
-    window.history.replaceState({}, "", next);
-  } else {
-    window.history.pushState({}, "", next);
-  }
-}
 
 export default function App() {
   const initial = readRoute();
@@ -299,17 +282,80 @@ export default function App() {
     );
   }
 
+  const incoming = transfers?.incoming ?? [];
+  const outgoing = transfers?.outgoing ?? [];
+  const receivedCount = incoming.filter((r) => ["PENDING", "CHECKING"].includes(r.my_status)).length;
+  const acceptedCount = incoming.filter((r) => r.my_status === "ACCEPTED").length;
+  const inTransitCount =
+    outgoing.filter((r) => r.status === "IN_TRANSIT").length +
+    incoming.filter((r) => r.status === "IN_TRANSIT" && r.my_status === "ACCEPTED").length;
+  const declinedCount = outgoing.filter((r) => r.status === "DECLINED").length;
+  const alertCount = Object.values(forecasts).filter((f) => f.risk === "HIGH").length;
+
+  let mainContent: ReactNode;
+  if (error) {
+    mainContent = <LoadError message={error} onRetry={retry} />;
+  } else if (loadingInventory || !inventory) {
+    mainContent = (
+      <section className="panel">
+        <LoadingState message="Loading…" />
+      </section>
+    );
+  } else if (view !== "inventory" || selectedTransferId) {
+    const errorBanner =
+      respondError || dispatchError || detailError ? (
+        <p className="error" style={{ margin: "0 0 8px" }}>
+          {respondError ?? dispatchError ?? detailError}
+        </p>
+      ) : null;
+    mainContent = (
+      <>
+        {errorBanner}
+        <TransferTables
+          mode={view === "inventory" ? "transferred" : view}
+          outgoing={outgoing}
+          incoming={incoming}
+          myStoreId={session.store_id}
+          responding={responding}
+          dispatching={dispatching}
+          onRespond={handleRespond}
+          onDispatch={handleDispatch}
+          onOpenTransfer={handleOpenTransfer}
+          selectedTransferId={selectedTransferId}
+          transferDetail={transferDetail}
+          loadingTransferDetail={loadingTransferDetail}
+          onCloseTransferDetail={handleCloseTransferDetail}
+        />
+      </>
+    );
+  } else {
+    mainContent = (
+      <ProductsPage
+        inventory={inventory}
+        forecasts={forecasts}
+        activeByProduct={buildActiveFulfillments(outgoing)}
+        onRequestProduct={handleRequestProduct}
+        onTrackShipment={handleTrackShipment}
+      />
+    );
+  }
+
   return (
-    <div className="shell">
-      <header className="app-header">
-        <div>
-          <h1>Stoqvia</h1>
-        </div>
-        <button className="ghost-button" type="button" onClick={handleLogout}>
-          Log out
-        </button>
-      </header>
-      {renderHome(session)}
+    <AppShell
+      session={session}
+      view={view}
+      counts={{
+        receivedCount,
+        acceptedCount,
+        inTransitCount,
+        declinedCount,
+        outgoingCount: outgoing.length,
+        alertCount,
+      }}
+      onChangeView={handleChangeView}
+      onLogout={handleLogout}
+    >
+      {mainContent}
       {loadingOptions ? (
         <div className="modal-backdrop">
           <section className="panel modal-card">
@@ -336,95 +382,6 @@ export default function App() {
           onSend={handleSendTransfer}
         />
       ) : null}
-    </div>
+    </AppShell>
   );
-
-  function renderHome(current: MeResponse) {
-    const incoming = transfers?.incoming ?? [];
-    const outgoing = transfers?.outgoing ?? [];
-    const receivedCount = incoming.filter((r) => ["PENDING", "CHECKING"].includes(r.my_status)).length;
-    const acceptedCount = incoming.filter((r) => r.my_status === "ACCEPTED").length;
-    const inTransitCount =
-      outgoing.filter((r) => r.status === "IN_TRANSIT").length +
-      incoming.filter((r) => r.status === "IN_TRANSIT" && r.my_status === "ACCEPTED").length;
-    const declinedCount = outgoing.filter((r) => r.status === "DECLINED").length;
-
-    const nav = (
-      <StoreNav
-        session={current}
-        view={view}
-        receivedCount={receivedCount}
-        acceptedCount={acceptedCount}
-        inTransitCount={inTransitCount}
-        declinedCount={declinedCount}
-        outgoingCount={outgoing.length}
-        onChangeView={handleChangeView}
-      />
-    );
-
-    if (error) {
-      return (
-        <div className="layout">
-          {nav}
-          <LoadError message={error} onRetry={retry} />
-        </div>
-      );
-    }
-    if (loadingInventory || !inventory) {
-      return (
-        <div className="layout">
-          {nav}
-          <section className="panel">
-            <LoadingState message="Loading…" />
-          </section>
-        </div>
-      );
-    }
-
-    let main = (
-      <InventoryTable
-        inventory={inventory}
-        forecasts={forecasts}
-        activeByProduct={buildActiveFulfillments(outgoing)}
-        onRequestProduct={handleRequestProduct}
-        onTrackShipment={handleTrackShipment}
-      />
-    );
-
-    if (view !== "inventory" || selectedTransferId) {
-      const errorBanner =
-        respondError || dispatchError || detailError ? (
-          <p className="error" style={{ margin: "0 0 8px" }}>
-            {respondError ?? dispatchError ?? detailError}
-          </p>
-        ) : null;
-      main = (
-        <>
-          {errorBanner}
-          <TransferTables
-            mode={view === "inventory" ? "transferred" : view}
-            outgoing={outgoing}
-            incoming={incoming}
-            myStoreId={current.store_id}
-            responding={responding}
-            dispatching={dispatching}
-            onRespond={handleRespond}
-            onDispatch={handleDispatch}
-            onOpenTransfer={handleOpenTransfer}
-            selectedTransferId={selectedTransferId}
-            transferDetail={transferDetail}
-            loadingTransferDetail={loadingTransferDetail}
-            onCloseTransferDetail={handleCloseTransferDetail}
-          />
-        </>
-      );
-    }
-
-    return (
-      <div className="layout">
-        {nav}
-        {main}
-      </div>
-    );
-  }
 }

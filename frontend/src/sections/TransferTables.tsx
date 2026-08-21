@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { HomeView } from "./StoreNav.tsx";
+import type { HomeView } from "../lib/routes.ts";
 import type {
   IncomingTransfer,
   OutgoingTransfer,
