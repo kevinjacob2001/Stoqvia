@@ -1,0 +1,40 @@
+.activity-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.activity-timeline li {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.activity-timeline-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--forest);
+}
+
+.activity-timeline strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.activity-timeline small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.activity-timeline-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}

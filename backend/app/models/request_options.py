@@ -28,6 +28,8 @@ class RequestOptionsResponse(BaseModel):
     product_id: str
     sku: str
     product_name: str
+    image_url: Optional[str] = None
+    product_url: Optional[str] = None
     requested_qty: int = Field(ge=1)
     nearby_groups: List[RadiusGroup]
     supplier: Optional[SupplierOption] = None

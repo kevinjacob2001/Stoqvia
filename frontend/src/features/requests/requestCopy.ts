@@ -1,7 +1,8 @@
 import type { IncomingTransfer, OutgoingTransfer } from "../../types.ts";
 import { dayCountLabel, formatDateTime } from "../../lib/datetime.ts";
+import { TABLE_PAGE_SIZE } from "../../lib/pagination.ts";
 
-export const REQUESTS_PAGE_SIZE = 5;
+export const REQUESTS_PAGE_SIZE = TABLE_PAGE_SIZE;
 
 export type StatusTone = "need" | "info" | "ok" | "muted" | "transit" | "closed";
 

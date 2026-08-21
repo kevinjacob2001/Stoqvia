@@ -5,7 +5,9 @@
     "name": "Cordless Drill 18V",
     "category": "Power Tools",
     "unit_cost": "89.00",
-    "sell_price": "129.05"
+    "sell_price": "129.05",
+    "image_url": "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Drill"
   },
   {
     "id": "HW-PT-002",
@@ -13,7 +15,9 @@
     "name": "Impact Driver Kit",
     "category": "Power Tools",
     "unit_cost": "110.00",
-    "sell_price": "156.20"
+    "sell_price": "156.20",
+    "image_url": "https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Impact_driver"
   },
   {
     "id": "HW-PT-003",
@@ -21,7 +25,9 @@
     "name": "Circular Saw 185mm",
     "category": "Power Tools",
     "unit_cost": "95.00",
-    "sell_price": "133.00"
+    "sell_price": "133.00",
+    "image_url": "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Circular_saw"
   },
   {
     "id": "HW-HT-004",
@@ -29,7 +35,9 @@
     "name": "Claw Hammer 16oz",
     "category": "Hand Tools",
     "unit_cost": "12.50",
-    "sell_price": "19.38"
+    "sell_price": "19.38",
+    "image_url": "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Hammer"
   },
   {
     "id": "HW-HT-005",
@@ -37,7 +45,9 @@
     "name": "Screwdriver Set 12pc",
     "category": "Hand Tools",
     "unit_cost": "18.00",
-    "sell_price": "27.00"
+    "sell_price": "27.00",
+    "image_url": "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Screwdriver"
   },
   {
     "id": "HW-HT-006",
@@ -45,7 +55,9 @@
     "name": "Tape Measure 8m",
     "category": "Hand Tools",
     "unit_cost": "9.50",
-    "sell_price": "15.20"
+    "sell_price": "15.20",
+    "image_url": "https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Tape_measure"
   },
   {
     "id": "HW-TI-007",
@@ -53,7 +65,9 @@
     "name": "Pine Stud 90x45 2.4m",
     "category": "Timber",
     "unit_cost": "8.20",
-    "sell_price": "11.07"
+    "sell_price": "11.07",
+    "image_url": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Lumber"
   },
   {
     "id": "HW-TI-008",
@@ -61,7 +75,9 @@
     "name": "Plywood Sheet 12mm",
     "category": "Timber",
     "unit_cost": "28.00",
-    "sell_price": "36.40"
+    "sell_price": "36.40",
+    "image_url": "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Plywood"
   },
   {
     "id": "HW-PA-009",
@@ -69,7 +85,9 @@
     "name": "Exterior Acrylic White 4L",
     "category": "Paint",
     "unit_cost": "32.00",
-    "sell_price": "46.40"
+    "sell_price": "46.40",
+    "image_url": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Paint"
   },
   {
     "id": "HW-PA-010",
@@ -77,7 +95,9 @@
     "name": "Interior Low-VOC 4L",
     "category": "Paint",
     "unit_cost": "36.00",
-    "sell_price": "51.12"
+    "sell_price": "51.12",
+    "image_url": "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Paint"
   },
   {
     "id": "HW-PL-011",
@@ -85,7 +105,9 @@
     "name": "PVC Pipe 50mm 3m",
     "category": "Plumbing",
     "unit_cost": "11.00",
-    "sell_price": "15.40"
+    "sell_price": "15.40",
+    "image_url": "https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Polyvinyl_chloride"
   },
   {
     "id": "HW-PL-012",
@@ -93,7 +115,9 @@
     "name": "Brass Ball Valve 20mm",
     "category": "Plumbing",
     "unit_cost": "14.50",
-    "sell_price": "21.46"
+    "sell_price": "21.46",
+    "image_url": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Ball_valve"
   },
   {
     "id": "HW-EL-013",
@@ -101,7 +125,9 @@
     "name": "Electrical Cable 2.5mm 100m",
     "category": "Electrical",
     "unit_cost": "85.00",
-    "sell_price": "108.80"
+    "sell_price": "108.80",
+    "image_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Electrical_cable"
   },
   {
     "id": "HW-EL-014",
@@ -109,7 +135,9 @@
     "name": "LED Downlight Pack 6",
     "category": "Electrical",
     "unit_cost": "42.00",
-    "sell_price": "60.90"
+    "sell_price": "60.90",
+    "image_url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/LED_lamp"
   },
   {
     "id": "HW-GA-015",
@@ -117,7 +145,9 @@
     "name": "Hose Reel 30m",
     "category": "Garden",
     "unit_cost": "45.00",
-    "sell_price": "63.90"
+    "sell_price": "63.90",
+    "image_url": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Garden_hose"
   },
   {
     "id": "HW-GA-016",
@@ -125,7 +155,9 @@
     "name": "Lawn Fertiliser 10kg",
     "category": "Garden",
     "unit_cost": "22.00",
-    "sell_price": "32.56"
+    "sell_price": "32.56",
+    "image_url": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Fertilizer"
   },
   {
     "id": "HW-BM-017",
@@ -133,7 +165,9 @@
     "name": "Cement Bag 20kg",
     "category": "Building Materials",
     "unit_cost": "9.80",
-    "sell_price": "12.25"
+    "sell_price": "12.25",
+    "image_url": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Cement"
   },
   {
     "id": "HW-BM-018",
@@ -141,7 +175,9 @@
     "name": "Rapid Set Concrete 20kg",
     "category": "Building Materials",
     "unit_cost": "12.50",
-    "sell_price": "16.00"
+    "sell_price": "16.00",
+    "image_url": "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Concrete"
   },
   {
     "id": "HW-BM-019",
@@ -149,7 +185,9 @@
     "name": "Roofing Screw Pack",
     "category": "Building Materials",
     "unit_cost": "15.00",
-    "sell_price": "21.00"
+    "sell_price": "21.00",
+    "image_url": "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Screw"
   },
   {
     "id": "HW-BM-020",
@@ -157,6 +195,8 @@
     "name": "Construction Adhesive",
     "category": "Building Materials",
     "unit_cost": "7.00",
-    "sell_price": "10.50"
+    "sell_price": "10.50",
+    "image_url": "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&h=400&q=80",
+    "product_url": "https://en.wikipedia.org/wiki/Adhesive"
   }
 ]

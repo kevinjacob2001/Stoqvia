@@ -63,6 +63,8 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                 "category": _string(),
                 "unit_cost": _decimal(),
                 "sell_price": _decimal(),
+                "image_url": _string(),
+                "product_url": _string(),
             },
             "additionalProperties": False,
         }

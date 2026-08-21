@@ -1,4 +1,4 @@
-import { Avatar, IdentityCell, Pagination, ProductThumb } from "../../../components/ui/index.ts";
+import { Avatar, IdentityCell, Pagination, ProductThumb, SurfaceCard } from "../../../components/ui/index.ts";
 import { isActionableInvite } from "../../../lib/transferCounts.ts";
 import { usePagedRows } from "../../../lib/usePagedRows.ts";
 import type { IncomingTransfer, RespondAction } from "../../../types.ts";
@@ -21,14 +21,10 @@ export default function ReceivedRequestsTable({
   const { page, setPage, visible: rows } = usePagedRows(incoming, REQUESTS_PAGE_SIZE);
 
   return (
-    <section className="req-card">
-      <div className="req-card-head">
-        <div>
-          <h2>Received requests</h2>
-          <p>Respond to requests sent to your store. After you accept, confirm dispatch on Accepted.</p>
-        </div>
-      </div>
-
+    <SurfaceCard
+      title="Received requests"
+      description="Respond to requests sent to your store. After you accept, confirm dispatch on Accepted."
+    >
       {incoming.length === 0 ? (
         <p className="status">No received requests.</p>
       ) : (
@@ -62,7 +58,7 @@ export default function ReceivedRequestsTable({
                       <IdentityCell
                         title={row.product_name}
                         subtitle={`SKU: ${row.sku}`}
-                        leading={<ProductThumb name={row.product_name} />}
+                        leading={<ProductThumb name={row.product_name} sku={row.sku} />}
                       />
                     </td>
                     <td>
@@ -104,6 +100,6 @@ export default function ReceivedRequestsTable({
       )}
 
       <Pagination page={page} total={incoming.length} pageSize={REQUESTS_PAGE_SIZE} onChange={setPage} />
-    </section>
+    </SurfaceCard>
   );
 }

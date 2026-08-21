@@ -1,6 +1,8 @@
 import "./ProductsTable.css";
-import { IdentityCell, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
+import { IdentityCell, Pagination, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
 import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
+import { TABLE_PAGE_SIZE } from "../../../lib/pagination.ts";
+import { usePagedRows } from "../../../lib/usePagedRows.ts";
 import type { ForecastResponse, InventoryItem } from "../../../types.ts";
 
 type ProductsTableProps = {
@@ -20,6 +22,8 @@ export default function ProductsTable({
   selectedId,
   onSelect,
 }: ProductsTableProps) {
+  const { page, setPage, visible: rows } = usePagedRows(items, TABLE_PAGE_SIZE);
+
   return (
     <>
       <div className="table-wrap">
@@ -36,7 +40,7 @@ export default function ProductsTable({
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => {
+            {rows.map((item) => {
               const forecast = forecasts[item.product_id];
               const risk = forecast?.risk;
               const active = activeByProduct[item.product_id];
@@ -51,7 +55,14 @@ export default function ProductsTable({
                     <IdentityCell
                       title={item.product_name}
                       subtitle={`SKU ${item.sku}`}
-                      leading={<ProductThumb name={item.product_name} />}
+                      leading={
+                        <ProductThumb
+                          name={item.product_name}
+                          sku={item.sku}
+                          imageUrl={item.image_url}
+                          productUrl={item.product_url}
+                        />
+                      }
                     />
                   </td>
                   <td>{item.on_hand} units</td>
@@ -77,8 +88,9 @@ export default function ProductsTable({
           </tbody>
         </table>
       </div>
+      <Pagination page={page} total={items.length} pageSize={TABLE_PAGE_SIZE} onChange={setPage} />
       <p className="table-footer">
-        Showing {items.length} of {totalCount} products
+        {items.length} filtered · {totalCount} products total
       </p>
     </>
   );

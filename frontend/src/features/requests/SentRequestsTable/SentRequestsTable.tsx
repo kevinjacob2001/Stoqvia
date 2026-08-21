@@ -1,4 +1,4 @@
-import { IdentityCell, Pagination, ProductThumb } from "../../../components/ui/index.ts";
+import { IdentityCell, Pagination, ProductThumb, SurfaceCard } from "../../../components/ui/index.ts";
 import { usePagedRows } from "../../../lib/usePagedRows.ts";
 import type { OutgoingTransfer } from "../../../types.ts";
 import InviteAvatarGroup from "../InviteAvatarGroup/index.ts";
@@ -13,14 +13,7 @@ export default function SentRequestsTable({ outgoing, onOpenTransfer }: SentRequ
   const { page, setPage, visible: rows } = usePagedRows(outgoing, REQUESTS_PAGE_SIZE);
 
   return (
-    <section className="req-card">
-      <div className="req-card-head">
-        <div>
-          <h2>Sent requests</h2>
-          <p>Requests your store broadcast. Track until stock arrives.</p>
-        </div>
-      </div>
-
+    <SurfaceCard title="Sent requests" description="Requests your store broadcast. Track until stock arrives.">
       {outgoing.length === 0 ? (
         <p className="status">No sent requests.</p>
       ) : (
@@ -44,7 +37,7 @@ export default function SentRequestsTable({ outgoing, onOpenTransfer }: SentRequ
                       <IdentityCell
                         title={row.product_name}
                         subtitle={`SKU: ${row.sku}`}
-                        leading={<ProductThumb name={row.product_name} />}
+                        leading={<ProductThumb name={row.product_name} sku={row.sku} />}
                       />
                     </td>
                     <td>
@@ -74,6 +67,6 @@ export default function SentRequestsTable({ outgoing, onOpenTransfer }: SentRequ
       )}
 
       <Pagination page={page} total={outgoing.length} pageSize={REQUESTS_PAGE_SIZE} onChange={setPage} />
-    </section>
+    </SurfaceCard>
   );
 }

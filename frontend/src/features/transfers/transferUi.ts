@@ -1,10 +1,11 @@
+import type { StatusTone } from "../../components/ui/index.ts";
 import { transferLabel } from "../../lib/transferLabels.ts";
 import type { TransferDetail } from "../../types.ts";
 
 export const TRANSFER_STAGES = ["Requested", "Accepted", "Dispatched", "Received"] as const;
 export type TransferStage = (typeof TRANSFER_STAGES)[number];
 
-export function transferStatusTone(status: string): string {
+export function transferStatusTone(status: string): StatusTone {
   if (status === "DECLINED" || status === "ALL_DECLINED") return "danger";
   if (status === "COMPLETED" || status === "ACCEPTED" || status === "RECEIVED") return "ok";
   if (status === "IN_TRANSIT" || status === "DISPATCHED") return "purple";

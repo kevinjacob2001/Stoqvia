@@ -118,10 +118,16 @@ def get_request_options(
             RadiusGroup(band=band, label=BAND_LABELS[band], stores=stores)
         )
 
+    product = _require(
+        database.products.find_one({"_id": product_oid}),
+        f"Product not found: {product_id}",
+    )
     return RequestOptionsResponse(
         product_id=receiver.product_id,
         sku=receiver.sku,
         product_name=receiver.product_name,
+        image_url=product.get("image_url"),
+        product_url=product.get("product_url"),
         requested_qty=requested_qty,
         nearby_groups=nearby_groups,
         supplier=_best_supplier(database, product_oid, requested_qty),

@@ -1,0 +1,72 @@
+.expand-section.variant-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.expand-section-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.expand-section.variant-inline .expand-section-toggle {
+  padding: 4px 0 10px;
+  font-size: 0.86rem;
+  color: var(--forest-deep);
+}
+
+.expand-section.variant-inline .expand-section-toggle strong {
+  font-size: 0.86rem;
+}
+
+.expand-section-toggle strong {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.expand-section-toggle small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.expand-section-chevron {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--forest-soft);
+  color: var(--forest-deep);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.expand-section.variant-inline .expand-section-chevron {
+  width: auto;
+  height: auto;
+  background: transparent;
+  font-size: 1rem;
+}
+
+.expand-section.variant-panel .expand-section-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.expand-section.variant-inline {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}

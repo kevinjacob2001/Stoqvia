@@ -2,6 +2,8 @@ export type InventoryItem = {
   product_id: string;
   sku: string;
   product_name: string;
+  image_url?: string | null;
+  product_url?: string | null;
   on_hand: number;
   usable_stock: number;
   safety_stock: number;
@@ -64,6 +66,8 @@ export type RequestOptionsResponse = {
   product_id: string;
   sku: string;
   product_name: string;
+  image_url?: string | null;
+  product_url?: string | null;
   requested_qty: number;
   nearby_groups: RadiusGroup[];
   supplier: SupplierOption | null;

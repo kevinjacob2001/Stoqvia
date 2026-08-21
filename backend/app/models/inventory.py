@@ -1,6 +1,6 @@
 """Inventory API response models."""
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,8 @@ class InventoryItem(BaseModel):
     product_id: str
     sku: str
     product_name: str
+    image_url: Optional[str] = None
+    product_url: Optional[str] = None
     on_hand: int = Field(ge=0)
     reserved: int = Field(ge=0)
     usable_stock: int = Field(ge=0)

@@ -1,0 +1,56 @@
+.metric-grid {
+  margin: 0;
+}
+
+.metric-grid.variant-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.metric-grid.variant-tiles > div {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.metric-grid.variant-tiles dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.metric-grid.variant-tiles dd {
+  margin: 0;
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.metric-grid.variant-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.metric-grid.variant-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.metric-grid.variant-rows dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.metric-grid.variant-rows dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.stock-warn {
+  color: var(--danger);
+}

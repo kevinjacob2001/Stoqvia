@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { ProductThumb } from "../../components/ui/index.ts";
+import type { ReactNode } from "react";
+import { ExpandSection, ProductThumb, SurfaceCard } from "../../components/ui/index.ts";
 import type { TransferEvent } from "../../types.ts";
 import {
   TransferActivityList,
@@ -40,13 +40,11 @@ export default function FulfillmentCard({
   note,
   actions,
 }: FulfillmentCardProps) {
-  const [activityOpen, setActivityOpen] = useState(false);
-
   return (
-    <article className="td-card fl-card">
+    <SurfaceCard as="article" className="fl-card">
       <div className="fl-card-top">
         <div className="fl-card-main">
-          <ProductThumb name={productName} />
+          <ProductThumb name={productName} sku={sku} />
           <div>
             <div className="fl-card-title-row">
               <h3>{productName}</h3>
@@ -61,7 +59,7 @@ export default function FulfillmentCard({
 
       <TransferMetrics items={metrics} />
 
-      <div className="td-card-head" style={{ marginTop: 14, marginBottom: 10 }}>
+      <div className="fl-progress-head">
         <h3>Progress</h3>
         <p>Where this transfer sits in the fulfillment path.</p>
       </div>
@@ -75,22 +73,15 @@ export default function FulfillmentCard({
 
       {note ? <p className="fl-card-note">{note}</p> : null}
 
-      <div className="fl-activity-block">
-        <button
-          type="button"
-          className="fl-activity-toggle"
-          onClick={() => setActivityOpen((value) => !value)}
-          aria-expanded={activityOpen}
-        >
-          <span>
-            Activity · {events.length} event{events.length === 1 ? "" : "s"}
-          </span>
-          <span aria-hidden="true">{activityOpen ? "−" : "+"}</span>
-        </button>
-        {activityOpen ? <TransferActivityList events={events} /> : null}
-      </div>
+      <ExpandSection
+        title="Activity"
+        summary={`${events.length} event${events.length === 1 ? "" : "s"}`}
+        variant="inline"
+      >
+        <TransferActivityList events={events} />
+      </ExpandSection>
 
       <p className="td-id">Transfer ID · {transferId}</p>
-    </article>
+    </SurfaceCard>
   );
 }

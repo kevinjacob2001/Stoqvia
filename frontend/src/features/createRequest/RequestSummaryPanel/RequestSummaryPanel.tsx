@@ -1,3 +1,4 @@
+import { MetricGrid, SurfaceCard } from "../../../components/ui/index.ts";
 import type { DonorOption, RequestOptionsResponse, SupplierOption } from "../../../types.ts";
 import { coverageSplit, leadTimeLabel, pluralize } from "../requestHelpers.ts";
 
@@ -27,70 +28,52 @@ export default function RequestSummaryPanel({
 
   return (
     <aside className="cr-sidebar">
-      <section className="cr-card cr-summary">
-        <h3>Request Summary</h3>
-        <dl>
-          <div>
-            <dt>Product</dt>
-            <dd>{options.product_name}</dd>
-          </div>
-          <div>
-            <dt>SKU</dt>
-            <dd>{options.sku}</dd>
-          </div>
-          <div>
-            <dt>Quantity</dt>
-            <dd>{pluralize(qty, "unit")}</dd>
-          </div>
-          <div>
-            <dt>{selectedCount === 1 ? "Store can cover" : "Stores can cover"}</dt>
-            <dd className="stock-ok">up to {pluralize(networkCover, "unit")}</dd>
-          </div>
-          <div>
-            <dt>Supplier leftover</dt>
-            <dd>{supplierRemainder > 0 ? pluralize(supplierRemainder, "unit") : "None"}</dd>
-          </div>
-          <div>
-            <dt>{selectedCount === 1 ? "Store" : "Stores"}</dt>
-            <dd>{selectedCount}</dd>
-          </div>
-          <div>
-            <dt>Best lead time</dt>
-            <dd className="stock-ok">{bestLead != null ? leadTimeLabel(bestLead) : "—"}</dd>
-          </div>
-          <div>
-            <dt>Fallback supplier</dt>
-            <dd>{supplier?.name ?? "—"}</dd>
-          </div>
-        </dl>
-      </section>
+      <SurfaceCard title="Request Summary">
+        <MetricGrid
+          variant="rows"
+          items={[
+            { label: "Product", value: options.product_name },
+            { label: "SKU", value: options.sku },
+            { label: "Quantity", value: pluralize(qty, "unit") },
+            {
+              label: selectedCount === 1 ? "Store can cover" : "Stores can cover",
+              value: `up to ${pluralize(networkCover, "unit")}`,
+              ok: true,
+            },
+            {
+              label: "Supplier leftover",
+              value: supplierRemainder > 0 ? pluralize(supplierRemainder, "unit") : "None",
+            },
+            { label: selectedCount === 1 ? "Store" : "Stores", value: `${selectedCount}` },
+            {
+              label: "Best lead time",
+              value: bestLead != null ? leadTimeLabel(bestLead) : "—",
+              ok: bestLead != null,
+            },
+            { label: "Fallback supplier", value: supplier?.name ?? "—" },
+          ]}
+        />
+      </SurfaceCard>
 
-      <section className="cr-card cr-summary">
-        <h3>Selected Stores Overview</h3>
-        <dl>
-          <div>
-            <dt>Total selected</dt>
-            <dd>{pluralize(selectedCount, "store")}</dd>
-          </div>
-          <div>
-            <dt>Total safe surplus</dt>
-            <dd className="stock-ok">{pluralize(totalSurplus, "unit")}</dd>
-          </div>
-          <div>
-            <dt>Average lead time</dt>
-            <dd>{avgLead != null ? leadTimeLabel(Math.round(avgLead)) : "—"}</dd>
-          </div>
-          <div>
-            <dt>Nearest store</dt>
-            <dd>
-              {nearest ? `${nearest.store_name}, ${nearest.distance_km.toFixed(1)} km` : "—"}
-            </dd>
-          </div>
-        </dl>
-      </section>
+      <SurfaceCard title="Selected Stores Overview">
+        <MetricGrid
+          variant="rows"
+          items={[
+            { label: "Total selected", value: pluralize(selectedCount, "store") },
+            { label: "Total safe surplus", value: pluralize(totalSurplus, "unit"), ok: true },
+            {
+              label: "Average lead time",
+              value: avgLead != null ? leadTimeLabel(Math.round(avgLead)) : "—",
+            },
+            {
+              label: "Nearest store",
+              value: nearest ? `${nearest.store_name}, ${nearest.distance_km.toFixed(1)} km` : "—",
+            },
+          ]}
+        />
+      </SurfaceCard>
 
-      <section className="cr-card cr-summary">
-        <h3>Next Steps</h3>
+      <SurfaceCard title="Next Steps">
         <ol className="cr-next-steps">
           <li>
             {selectedCount === 0
@@ -115,7 +98,7 @@ export default function RequestSummaryPanel({
                   : "Selected stores can cover the full request if they all accept"}
           </li>
         </ol>
-      </section>
+      </SurfaceCard>
     </aside>
   );
 }

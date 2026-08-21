@@ -1,3 +1,6 @@
+/** Default page size for data tables across the app. */
+export const TABLE_PAGE_SIZE = 10;
+
 export function pageCount(total: number, pageSize: number): number {
   if (pageSize < 1) return 1;
   return Math.max(1, Math.ceil(Math.max(0, total) / pageSize));

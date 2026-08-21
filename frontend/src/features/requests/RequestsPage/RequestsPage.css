@@ -24,27 +24,8 @@
   z-index: 1;
 }
 
-.req-card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px 16px 10px;
-}
-
-.req-card-head {
-  padding: 2px 4px 12px;
+.req-section .surface-card-head {
   padding-right: 140px;
-}
-
-.req-card-head h2 {
-  margin: 0;
-  font-size: 1.05rem;
-}
-
-.req-card-head p {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 0.84rem;
 }
 
 .req-need {
@@ -86,6 +67,6 @@
 }
 
 @media (max-width: 900px) {
-  .req-card-head { padding-right: 4px; }
+  .req-section .surface-card-head { padding-right: 0; }
   .req-view-all { position: static; margin: 0 4px 8px auto; display: block; }
 }

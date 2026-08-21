@@ -1,5 +1,5 @@
 import "./ProductDrawer.css";
-import { Button, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
+import { Button, MetricGrid, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
 import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
 import type { ForecastResponse, InventoryItem } from "../../../types.ts";
 
@@ -26,41 +26,23 @@ export default function ProductDrawer({
         ×
       </button>
       <div className="drawer-hero">
-        <ProductThumb name={item.product_name} size="lg" />
+        <ProductThumb name={item.product_name} sku={item.sku} size="lg" />
         <h2>{item.product_name}</h2>
         <p>SKU {item.sku}</p>
       </div>
 
-      <dl className="drawer-metrics">
-        <div>
-          <dt>My Store</dt>
-          <dd>{item.on_hand} units</dd>
-        </div>
-        <div>
-          <dt>Usable stock</dt>
-          <dd>{item.usable_stock}</dd>
-        </div>
-        <div>
-          <dt>Safety stock</dt>
-          <dd>{item.safety_stock}</dd>
-        </div>
-        <div>
-          <dt>7-day forecast</dt>
-          <dd>{forecast?.predicted_7d_demand ?? "—"}</dd>
-        </div>
-        <div>
-          <dt>Predicted shortage</dt>
-          <dd>{forecast?.predicted_shortage_qty ?? "—"}</dd>
-        </div>
-        <div>
-          <dt>Risk</dt>
-          <dd>{forecast?.risk ? <RiskBadge risk={forecast.risk} /> : "—"}</dd>
-        </div>
-        <div>
-          <dt>Supplier lead time</dt>
-          <dd>8 days</dd>
-        </div>
-      </dl>
+      <MetricGrid
+        variant="rows"
+        items={[
+          { label: "My Store", value: `${item.on_hand} units` },
+          { label: "Usable stock", value: `${item.usable_stock}` },
+          { label: "Safety stock", value: `${item.safety_stock}` },
+          { label: "7-day forecast", value: `${forecast?.predicted_7d_demand ?? "—"}` },
+          { label: "Predicted shortage", value: `${forecast?.predicted_shortage_qty ?? "—"}` },
+          { label: "Risk", value: forecast?.risk ? <RiskBadge risk={forecast.risk} /> : "—" },
+          { label: "Supplier lead time", value: "8 days" },
+        ]}
+      />
 
       {forecast?.risk === "HIGH" && !active ? (
         <Button variant="primary" className="drawer-cta" onClick={() => onRequestProduct(item.product_id)}>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, ConfirmModal } from "../../components/ui/index.ts";
+import { Button, ConfirmModal, SurfaceCard } from "../../components/ui/index.ts";
 import type { IncomingTransfer, OutgoingTransfer } from "../../types.ts";
 import FulfillmentCard from "./FulfillmentCard.tsx";
 import "./TransferUi.css";
@@ -22,7 +22,7 @@ export default function StoreTransfersList({
   const pendingRow = accepted.find((row) => row.transfer_id === pendingDispatchId) ?? null;
 
   if (accepted.length === 0) {
-    return <p className="fl-empty td-card">No accepted requests yet.</p>;
+    return <SurfaceCard className="fl-empty">No accepted requests yet.</SurfaceCard>;
   }
 
   return (
@@ -117,7 +117,7 @@ export function InTransitList({ outgoing, incoming, onOpenTransfer }: InTransitL
   const outbound = incoming.filter((row) => row.status === "IN_TRANSIT");
 
   if (inbound.length === 0 && outbound.length === 0) {
-    return <p className="fl-empty td-card">No transfers currently in transit.</p>;
+    return <SurfaceCard className="fl-empty">No transfers currently in transit.</SurfaceCard>;
   }
 
   return (

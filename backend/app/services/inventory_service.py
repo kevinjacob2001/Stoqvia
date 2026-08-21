@@ -54,6 +54,8 @@ def _item(
         product_id=str(product["_id"]),
         sku=product["sku"],
         product_name=product["name"],
+        image_url=product.get("image_url"),
+        product_url=product.get("product_url"),
         on_hand=on_hand,
         reserved=reserved,
         usable_stock=calculate_usable_stock(on_hand, reserved),

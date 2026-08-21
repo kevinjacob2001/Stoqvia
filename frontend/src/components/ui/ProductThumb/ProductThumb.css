@@ -1,3 +1,10 @@
+.product-thumb-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
 .product-thumb,
 .drawer-thumb {
   width: 44px;
@@ -10,6 +17,13 @@
   font-weight: 700;
   font-size: 0.75rem;
   flex-shrink: 0;
+  object-fit: cover;
+}
+
+.product-thumb.has-image,
+.drawer-thumb.has-image {
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .drawer-thumb {
@@ -18,4 +32,14 @@
   margin: 0 auto 12px;
   font-size: 1.2rem;
   border-radius: 16px;
+}
+
+.product-thumb-link .drawer-thumb {
+  margin: 0 auto 12px;
+}
+
+.product-thumb-link:hover .product-thumb,
+.product-thumb-link:hover .drawer-thumb {
+  outline: 2px solid var(--forest);
+  outline-offset: 1px;
 }

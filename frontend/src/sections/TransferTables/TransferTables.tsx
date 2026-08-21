@@ -1,6 +1,8 @@
-import { Button, PageHeader } from "../../components/ui/index.ts";
+import { Button, PageHeader, Pagination, SurfaceCard } from "../../components/ui/index.ts";
 import { VIEW_TITLES, type HomeView } from "../../lib/routes.ts";
+import { TABLE_PAGE_SIZE } from "../../lib/pagination.ts";
 import { transferLabel } from "../../lib/transferLabels.ts";
+import { usePagedRows } from "../../lib/usePagedRows.ts";
 import StoreTransfersList, { InTransitList } from "../../features/transfers/FulfillmentLists.tsx";
 import TransferDetailPage from "../../features/transfers/TransferDetailPage/index.ts";
 import "../../features/transfers/TransferUi.css";
@@ -55,15 +57,12 @@ function DeclinedTable({
   onOpenTransfer: (id: string) => void;
 }) {
   const declined = outgoing.filter((row) => row.status === "DECLINED");
+  const { page, setPage, visible: rows } = usePagedRows(declined, TABLE_PAGE_SIZE);
   if (declined.length === 0) {
-    return <p className="fl-empty td-card">No declined requests.</p>;
+    return <SurfaceCard className="fl-empty">No declined requests.</SurfaceCard>;
   }
   return (
-    <section className="td-card">
-      <div className="td-card-head">
-        <h3>Declined requests</h3>
-        <p>All invited stores declined and no supplier could be assigned.</p>
-      </div>
+    <SurfaceCard title="Declined requests" description="All invited stores declined and no supplier could be assigned.">
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -75,7 +74,7 @@ function DeclinedTable({
             </tr>
           </thead>
           <tbody>
-            {declined.map((row) => (
+            {rows.map((row) => (
               <tr key={row.transfer_id}>
                 <td>
                   <strong>{row.product_name}</strong>
@@ -98,7 +97,8 @@ function DeclinedTable({
           </tbody>
         </table>
       </div>
-    </section>
+      <Pagination page={page} total={declined.length} pageSize={TABLE_PAGE_SIZE} onChange={setPage} />
+    </SurfaceCard>
   );
 }
 

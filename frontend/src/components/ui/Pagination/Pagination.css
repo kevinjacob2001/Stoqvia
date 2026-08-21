@@ -3,8 +3,10 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 12px 4px 6px;
+  margin: 16px 0 4px;
+  padding: 14px 16px 4px;
   flex-wrap: wrap;
+  border-top: 1px solid var(--line);
 }
 
 .pager-meta {
@@ -37,6 +39,10 @@
 .pager-btns button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.pager-inactive .pager-btns {
+  opacity: 0.7;
 }
 
 .pager-ellipsis {

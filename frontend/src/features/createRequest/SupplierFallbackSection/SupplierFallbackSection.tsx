@@ -1,3 +1,4 @@
+import { SurfaceCard } from "../../../components/ui/index.ts";
 import type { SupplierOption } from "../../../types.ts";
 import { leadTimeLabel, pluralize } from "../requestHelpers.ts";
 
@@ -22,7 +23,7 @@ export default function SupplierFallbackSection({
           : " Selected stores currently have enough surplus to cover this request.";
 
   return (
-    <section className="cr-card">
+    <SurfaceCard>
       <div className="cr-section-head">
         <span className="cr-step">3</span>
         <div>
@@ -67,6 +68,6 @@ export default function SupplierFallbackSection({
       ) : (
         <p className="status">No approved supplier available for this product.</p>
       )}
-    </section>
+    </SurfaceCard>
   );
 }

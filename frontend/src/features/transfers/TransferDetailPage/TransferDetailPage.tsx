@@ -1,5 +1,12 @@
 import "../TransferUi.css";
-import { Avatar, Button, PageHeader, ProductThumb } from "../../../components/ui/index.ts";
+import {
+  Avatar,
+  Button,
+  MetricGrid,
+  PageHeader,
+  ProductThumb,
+  SurfaceCard,
+} from "../../../components/ui/index.ts";
 import { formatDateTime } from "../../../lib/datetime.ts";
 import { VIEW_TITLES, type HomeView } from "../../../lib/routes.ts";
 import { transferLabel } from "../../../lib/transferLabels.ts";
@@ -9,8 +16,9 @@ import {
   TransferExpandSection,
   TransferProgress,
   TransferStatusBadge,
+  TransferStatusPill,
 } from "../TransferShared.tsx";
-import { transferStatusSummary, transferStatusTone } from "../transferUi.ts";
+import { transferStatusSummary } from "../transferUi.ts";
 
 type TransferDetailPageProps = {
   detail: TransferDetail | null;
@@ -71,9 +79,9 @@ export default function TransferDetailPage({
 
       {detail ? (
         <div className="td-layout">
-          <section className="td-card td-hero">
+          <SurfaceCard className="td-hero">
             <div className="td-hero-main">
-              <ProductThumb name={detail.product_name} size="lg" />
+              <ProductThumb name={detail.product_name} sku={detail.sku} size="lg" />
               <div>
                 <div className="td-hero-title-row">
                   <h2>{detail.product_name}</h2>
@@ -84,47 +92,33 @@ export default function TransferDetailPage({
               </div>
             </div>
 
-            <dl className="td-metrics">
-              <div>
-                <dt>Requested</dt>
-                <dd>{detail.qty} units</dd>
-              </div>
-              <div>
-                <dt>Still need</dt>
-                <dd className={detail.remaining_qty > 0 ? "stock-warn" : undefined}>
-                  {detail.remaining_qty} units
-                </dd>
-              </div>
-              <div>
-                <dt>Requester</dt>
-                <dd>{detail.requester_store_name}</dd>
-              </div>
-              <div>
-                <dt>Accepted by</dt>
-                <dd>{detail.accepted_store_name ?? "—"}</dd>
-              </div>
-              {detail.my_status ? (
-                <div>
-                  <dt>Your status</dt>
-                  <dd>{transferLabel(detail.my_status)}</dd>
-                </div>
-              ) : null}
-              {detail.lead_days != null ? (
-                <div>
-                  <dt>Lead time</dt>
-                  <dd>
-                    {detail.lead_days} day{detail.lead_days === 1 ? "" : "s"}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
+            <MetricGrid
+              variant="tiles"
+              items={[
+                { label: "Requested", value: `${detail.qty} units` },
+                {
+                  label: "Still need",
+                  value: `${detail.remaining_qty} units`,
+                  warn: detail.remaining_qty > 0,
+                },
+                { label: "Requester", value: detail.requester_store_name },
+                { label: "Accepted by", value: detail.accepted_store_name ?? "—" },
+                ...(detail.my_status
+                  ? [{ label: "Your status", value: transferLabel(detail.my_status) }]
+                  : []),
+                ...(detail.lead_days != null
+                  ? [
+                      {
+                        label: "Lead time",
+                        value: `${detail.lead_days} day${detail.lead_days === 1 ? "" : "s"}`,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </SurfaceCard>
 
-          <section className="td-card">
-            <div className="td-card-head">
-              <h3>Progress</h3>
-              <p>Where this transfer sits in the fulfillment path.</p>
-            </div>
+          <SurfaceCard title="Progress" description="Where this transfer sits in the fulfillment path.">
             {detail.status === "DECLINED" ? (
               <div className="td-callout danger">{transferStatusSummary(detail)}</div>
             ) : (
@@ -136,7 +130,7 @@ export default function TransferDetailPage({
                 completedAt={detail.completed_at}
               />
             )}
-          </section>
+          </SurfaceCard>
 
           <TransferExpandSection
             title="Invited stores"
@@ -158,9 +152,7 @@ export default function TransferDetailPage({
                           : "No units accepted yet"}
                       </small>
                     </div>
-                    <span className={`td-pill tone-${transferStatusTone(invite.status)}`}>
-                      {transferLabel(invite.status)}
-                    </span>
+                    <TransferStatusPill status={invite.status} />
                   </li>
                 ))}
               </ul>
@@ -195,9 +187,7 @@ export default function TransferDetailPage({
                         {alloc.lead_days != null ? ` · ${alloc.lead_days} day lead` : ""}
                       </small>
                     </div>
-                    <span className={`td-pill tone-${transferStatusTone(alloc.status)}`}>
-                      {transferLabel(alloc.status)}
-                    </span>
+                    <TransferStatusPill status={alloc.status} />
                   </li>
                 ))}
               </ul>
@@ -210,28 +200,19 @@ export default function TransferDetailPage({
               summary={`${detail.purchase_order.supplier_name} · ${detail.purchase_order.qty} units`}
               defaultOpen
             >
-              <dl className="td-po-grid">
-                <div>
-                  <dt>PO ID</dt>
-                  <dd>{detail.purchase_order.po_id}</dd>
-                </div>
-                <div>
-                  <dt>Supplier</dt>
-                  <dd>{detail.purchase_order.supplier_name}</dd>
-                </div>
-                <div>
-                  <dt>Quantity</dt>
-                  <dd>{detail.purchase_order.qty} units</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>{detail.purchase_order.status}</dd>
-                </div>
-                <div>
-                  <dt>Expected</dt>
-                  <dd>{formatDateTime(detail.purchase_order.expected_date)}</dd>
-                </div>
-              </dl>
+              <MetricGrid
+                variant="tiles"
+                items={[
+                  { label: "PO ID", value: detail.purchase_order.po_id },
+                  { label: "Supplier", value: detail.purchase_order.supplier_name },
+                  { label: "Quantity", value: `${detail.purchase_order.qty} units` },
+                  { label: "Status", value: detail.purchase_order.status },
+                  {
+                    label: "Expected",
+                    value: formatDateTime(detail.purchase_order.expected_date),
+                  },
+                ]}
+              />
             </TransferExpandSection>
           ) : null}
 

@@ -1,0 +1,88 @@
+.progress-track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.progress-track-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.progress-track-rail {
+  display: flex;
+  align-items: center;
+}
+
+.progress-track-rail::before,
+.progress-track-rail::after {
+  content: "";
+  height: 3px;
+  flex: 1;
+  background: var(--line);
+}
+
+.progress-track-step:first-child .progress-track-rail::before,
+.progress-track-step:last-child .progress-track-rail::after {
+  visibility: hidden;
+}
+
+.progress-track-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--line);
+  border: 2px solid var(--line);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.progress-track-step.done .progress-track-dot {
+  background: var(--forest);
+  border-color: var(--forest);
+}
+
+.progress-track-step.done .progress-track-rail::before,
+.progress-track-step.done .progress-track-rail::after,
+.progress-track-step.current .progress-track-rail::before {
+  background: var(--forest);
+}
+
+.progress-track-step.current .progress-track-dot {
+  background: #fff;
+  border-color: var(--forest);
+  box-shadow: 0 0 0 4px var(--forest-soft);
+}
+
+.progress-track-copy {
+  text-align: center;
+}
+
+.progress-track-copy strong {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.progress-track-step.done .progress-track-copy strong,
+.progress-track-step.current .progress-track-copy strong {
+  color: var(--ink);
+}
+
+.progress-track-copy small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+@media (max-width: 720px) {
+  .progress-track {
+    grid-template-columns: 1fr 1fr;
+  }
+}

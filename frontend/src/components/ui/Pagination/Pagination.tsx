@@ -10,18 +10,32 @@ type PaginationProps = {
 
 export default function Pagination({ page, total, pageSize, onChange }: PaginationProps) {
   const count = pageCount(total, pageSize);
-  if (total <= pageSize) return null;
+  const inactive = total <= pageSize;
+  if (total === 0) return null;
+
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="pager">
+    <div className={`pager${inactive ? " pager-inactive" : ""}`}>
       <span className="pager-meta">
-        Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}
+        Showing {from} to {to} of {total}
       </span>
-      <div className="pager-btns">
-        <button type="button" disabled={page <= 1} onClick={() => onChange(1)} aria-label="First page">
+      <div className="pager-btns" aria-disabled={inactive || undefined}>
+        <button
+          type="button"
+          disabled={inactive || page <= 1}
+          onClick={() => onChange(1)}
+          aria-label="First page"
+        >
           «
         </button>
-        <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Previous page">
+        <button
+          type="button"
+          disabled={inactive || page <= 1}
+          onClick={() => onChange(page - 1)}
+          aria-label="Previous page"
+        >
           ‹
         </button>
         {pagerWindow(page, count).map((item: number | "ellipsis", index: number) =>
@@ -34,16 +48,27 @@ export default function Pagination({ page, total, pageSize, onChange }: Paginati
               key={item}
               type="button"
               className={item === page ? "active" : undefined}
+              disabled={inactive}
               onClick={() => onChange(item)}
             >
               {item}
             </button>
           ),
         )}
-        <button type="button" disabled={page >= count} onClick={() => onChange(page + 1)} aria-label="Next page">
+        <button
+          type="button"
+          disabled={inactive || page >= count}
+          onClick={() => onChange(page + 1)}
+          aria-label="Next page"
+        >
           ›
         </button>
-        <button type="button" disabled={page >= count} onClick={() => onChange(count)} aria-label="Last page">
+        <button
+          type="button"
+          disabled={inactive || page >= count}
+          onClick={() => onChange(count)}
+          aria-label="Last page"
+        >
           »
         </button>
       </div>

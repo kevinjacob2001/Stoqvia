@@ -1,4 +1,4 @@
-import { Button, ProductThumb } from "../../../components/ui/index.ts";
+import { Button, ProductThumb, SurfaceCard } from "../../../components/ui/index.ts";
 import type { InventoryItem, RequestOptionsResponse } from "../../../types.ts";
 import { clampRequestQty } from "../requestHelpers.ts";
 
@@ -21,7 +21,7 @@ export default function RequestProductSection({
   const setQty = (value: number) => onQtyChange(clampRequestQty(value, maxQty));
 
   return (
-    <section className="cr-card">
+    <SurfaceCard>
       <div className="cr-section-head">
         <span className="cr-step">1</span>
         <h2>Product &amp; Request Details</h2>
@@ -29,7 +29,7 @@ export default function RequestProductSection({
 
       <div className="cr-product-row">
         <div className="cr-product-identity">
-          <ProductThumb name={options.product_name} />
+          <ProductThumb name={options.product_name} sku={options.sku} imageUrl={options.image_url} productUrl={options.product_url} />
           <div>
             <strong>{options.product_name}</strong>
             <small>SKU {options.sku}</small>
@@ -79,6 +79,6 @@ export default function RequestProductSection({
         <span>Notes (optional)</span>
         <div className="cr-notes-locked">Currently disabled</div>
       </label>
-    </section>
+    </SurfaceCard>
   );
 }
