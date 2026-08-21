@@ -12,6 +12,7 @@ import {
   respondToTransfer,
 } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
+import { CreateRequestPage } from "./features/createRequest/index.ts";
 import { ProductsPage } from "./features/products/index.ts";
 import { AppShell } from "./layout/index.ts";
 import { buildActiveFulfillments } from "./lib/fulfillments.ts";
@@ -19,7 +20,6 @@ import { pathToView, readRoute, writeRoute, type HomeView } from "./lib/routes.t
 import LoadError from "./sections/LoadError/index.ts";
 import LoadingState from "./sections/LoadingState/index.ts";
 import LoginForm from "./sections/LoginForm/index.ts";
-import RequestOptionsModal from "./sections/RequestOptionsModal/index.ts";
 import TransferTables from "./sections/TransferTables/index.ts";
 import type {
   ForecastResponse,
@@ -74,7 +74,7 @@ export default function App() {
         setSelectedTransferId(null);
         setTransferDetail(null);
         // Drop stale ?id= so the tab list remains usable.
-        writeRoute(pathToView(window.location.pathname), null, true);
+        writeRoute(pathToView(window.location.pathname), { replace: true });
       })
       .finally(() => setLoadingTransferDetail(false));
   }, []);
@@ -86,12 +86,28 @@ export default function App() {
   }, []);
 
   const applyRoute = useCallback(
-    (nextView: HomeView, transferId: string | null) => {
+    (nextView: HomeView, transferId: string | null, productId: string | null = null) => {
       setView(nextView);
       if (transferId) {
         loadTransferDetail(transferId);
       } else {
         clearTransferDetail();
+      }
+      if (nextView === "create_request" && productId) {
+        setOptionsError(null);
+        setSendError(null);
+        setLoadingOptions(true);
+        fetchRequestOptions(productId)
+          .then(setOptions)
+          .catch((err: Error) => {
+            setOptions(null);
+            setOptionsError(err.message);
+          })
+          .finally(() => setLoadingOptions(false));
+      } else if (nextView !== "create_request") {
+        setOptions(null);
+        setOptionsError(null);
+        setSendError(null);
       }
     },
     [clearTransferDetail, loadTransferDetail],
@@ -142,15 +158,15 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
-    const { view: routeView, transferId } = readRoute();
-    applyRoute(routeView, transferId);
+    const { view: routeView, transferId, productId } = readRoute();
+    applyRoute(routeView, transferId, productId);
   }, [session, applyRoute]);
 
   useEffect(() => {
     if (!session) return;
     const onPop = () => {
-      const { view: routeView, transferId } = readRoute();
-      applyRoute(routeView, transferId);
+      const { view: routeView, transferId, productId } = readRoute();
+      applyRoute(routeView, transferId, productId);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -192,14 +208,16 @@ export default function App() {
   }
 
   function handleRequestProduct(productId: string) {
+    writeRoute("create_request", { productId });
+    applyRoute("create_request", null, productId);
+  }
+
+  function handleCancelCreateRequest() {
+    setOptions(null);
     setOptionsError(null);
     setSendError(null);
-    setOptions(null);
-    setLoadingOptions(true);
-    fetchRequestOptions(productId)
-      .then(setOptions)
-      .catch((err: Error) => setOptionsError(err.message))
-      .finally(() => setLoadingOptions(false));
+    writeRoute("inventory");
+    setView("inventory");
   }
 
   function handleRespond(transferId: string, action: RespondAction, qty?: number) {
@@ -239,8 +257,10 @@ export default function App() {
   }
 
   function handleOpenTransfer(transferId: string) {
-    writeRoute(view === "inventory" ? "transferred" : view, transferId);
+    const nextView = view === "inventory" || view === "create_request" ? "transferred" : view;
+    writeRoute(nextView, { transferId });
     loadTransferDetail(transferId);
+    setView(nextView);
   }
 
   function handleCloseTransferDetail() {
@@ -252,11 +272,16 @@ export default function App() {
     writeRoute(nextView);
     setView(nextView);
     clearTransferDetail();
+    if (nextView !== "create_request") {
+      setOptions(null);
+      setOptionsError(null);
+      setSendError(null);
+    }
   }
 
   function handleTrackShipment(transferId: string) {
-    writeRoute("in_transit", transferId);
-    applyRoute("in_transit", transferId);
+    writeRoute("in_transit", { transferId });
+    applyRoute("in_transit", transferId, null);
   }
 
   if (checkingSession) {
@@ -301,6 +326,45 @@ export default function App() {
         <LoadingState message="Loading…" />
       </section>
     );
+  } else if (view === "create_request") {
+    if (loadingOptions) {
+      mainContent = (
+        <section className="panel">
+          <LoadingState message="Loading request options…" />
+        </section>
+      );
+    } else if (optionsError) {
+      mainContent = (
+        <section className="panel">
+          <p className="error">{optionsError}</p>
+          <button className="ghost-button" type="button" onClick={handleCancelCreateRequest}>
+            Back to Products
+          </button>
+        </section>
+      );
+    } else if (options) {
+      const item = inventory.items.find((row) => row.product_id === options.product_id);
+      mainContent = (
+        <CreateRequestPage
+          options={options}
+          inventoryItem={item}
+          forecast={forecasts[options.product_id]}
+          sending={sending}
+          sendError={sendError}
+          onCancel={handleCancelCreateRequest}
+          onBroadcast={handleSendTransfer}
+        />
+      );
+    } else {
+      mainContent = (
+        <section className="panel">
+          <p className="status">No request loaded.</p>
+          <button className="ghost-button" type="button" onClick={handleCancelCreateRequest}>
+            Back to Products
+          </button>
+        </section>
+      );
+    }
   } else if (view !== "inventory" || selectedTransferId) {
     const errorBanner =
       respondError || dispatchError || detailError ? (
@@ -308,11 +372,12 @@ export default function App() {
           {respondError ?? dispatchError ?? detailError}
         </p>
       ) : null;
+    const transferMode = view === "inventory" ? "transferred" : view;
     mainContent = (
       <>
         {errorBanner}
         <TransferTables
-          mode={view === "inventory" ? "transferred" : view}
+          mode={transferMode}
           outgoing={outgoing}
           incoming={incoming}
           myStoreId={session.store_id}
@@ -356,32 +421,6 @@ export default function App() {
       onLogout={handleLogout}
     >
       {mainContent}
-      {loadingOptions ? (
-        <div className="modal-backdrop">
-          <section className="panel modal-card">
-            <LoadingState message="Loading options…" />
-          </section>
-        </div>
-      ) : null}
-      {optionsError ? (
-        <div className="modal-backdrop" onClick={() => setOptionsError(null)} role="presentation">
-          <section className="panel modal-card" onClick={(event) => event.stopPropagation()}>
-            <p className="error">{optionsError}</p>
-            <button className="ghost-button" type="button" onClick={() => setOptionsError(null)}>
-              Close
-            </button>
-          </section>
-        </div>
-      ) : null}
-      {options ? (
-        <RequestOptionsModal
-          options={options}
-          sending={sending}
-          sendError={sendError}
-          onClose={() => setOptions(null)}
-          onSend={handleSendTransfer}
-        />
-      ) : null}
     </AppShell>
   );
 }
