@@ -223,6 +223,7 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                 "dispatched_at": _date(),
                 "completed_at": _date(),
                 "lead_days": _int_min(0),
+                "po_id": _object_id(),
                 "events": {
                     "bsonType": "array",
                     "items": {

@@ -28,6 +28,7 @@ from app.models.transfers import (
     INVITE_PENDING,
     TransferDetail,
     TransferEvent,
+    TransferPurchaseOrder,
 )
 from app.services.inventory_service import parse_object_id
 from app.services.request_options_service import get_request_options
@@ -76,13 +77,9 @@ def _get_lead_days(db: Database, store_oid: Any, product_oid: Any) -> int:
     return DEFAULT_LEAD_DAYS
 
 
-def _best_supplier_lead_days(db: Database, product_oid: Any) -> int:
-    """Pick the best (lowest lead_days) approved supplier for a product.
-
-    This is used for supplier escalation where we are no longer relying on
-    donor store inventory.
-    """
-    best: Optional[int] = None
+def _best_supplier_for_product(db: Database, product_oid: Any) -> Optional[Dict[str, Any]]:
+    """Pick the best (lowest lead_days) approved supplier for a product."""
+    best: Optional[Dict[str, Any]] = None
     links = list(db.supplier_products.find({"product_id": product_oid}))
     for link in links:
         supplier_id = link.get("supplier_id")
@@ -95,9 +92,31 @@ def _best_supplier_lead_days(db: Database, product_oid: Any) -> int:
         if lead is None:
             continue
         lead_i = max(1, int(lead))
-        if best is None or lead_i < best:
-            best = lead_i
-    return best if best is not None else DEFAULT_LEAD_DAYS
+        candidate = {
+            "supplier_id": supplier_id,
+            "supplier_name": supplier["name"],
+            "lead_days": lead_i,
+            "min_order_qty": max(1, int(supplier.get("min_order_qty", 1))),
+        }
+        if best is None or lead_i < best["lead_days"]:
+            best = candidate
+    return best
+
+
+def _load_purchase_order(db: Database, po_id: Any) -> Optional[TransferPurchaseOrder]:
+    if po_id is None:
+        return None
+    po = db.purchase_orders.find_one({"_id": po_id})
+    if po is None:
+        return None
+    supplier = db.suppliers.find_one({"_id": po["supplier_id"]})
+    return TransferPurchaseOrder(
+        po_id=str(po["_id"]),
+        supplier_name=supplier["name"] if supplier else "Supplier",
+        qty=int(po["qty"]),
+        status=po["status"],
+        expected_date=po.get("expected_date"),
+    )
 
 
 def _append_event(db: Database, transfer_oid: ObjectId, actor: str, action: str) -> None:
@@ -151,11 +170,22 @@ def _build_incoming(
 
 
 def _build_detail(
-    doc: dict, viewer_store_oid: Any, names: Dict[Any, str], sku: str, product_name: str
+    doc: dict,
+    viewer_store_oid: Any,
+    names: Dict[Any, str],
+    sku: str,
+    product_name: str,
+    db: Optional[Database] = None,
 ) -> TransferDetail:
+    purchase_order = None
+    if db is not None and doc.get("po_id") is not None:
+        purchase_order = _load_purchase_order(db, doc["po_id"])
+
     accepted_store_name: Optional[str] = None
     if doc.get("accepted_store_id"):
         accepted_store_name = names.get(doc["accepted_store_id"])
+    elif purchase_order is not None:
+        accepted_store_name = purchase_order.supplier_name
     elif doc.get("status") in (STATUS_IN_TRANSIT, STATUS_COMPLETED):
         # Supplier fulfilment has no accepted_store_id.
         accepted_store_name = "Supplier"
@@ -179,6 +209,7 @@ def _build_detail(
         completed_at=doc.get("completed_at"),
         lead_days=doc.get("lead_days"),
         events=[TransferEvent(**e) for e in doc.get("events", [])],
+        purchase_order=purchase_order,
     )
 
 
@@ -212,6 +243,12 @@ def _maybe_auto_complete(db: Database) -> None:
                 {"$set": {"status": STATUS_COMPLETED, "completed_at": now}},
             )
             _append_event(db, doc["_id"], "system", "COMPLETED")
+            if doc.get("po_id") is not None:
+                db.purchase_orders.update_one(
+                    {"_id": doc["po_id"]},
+                    {"$set": {"status": "RECEIVED"}},
+                )
+                _append_event(db, doc["_id"], "system", "PO_RECEIVED")
 
 
 # ---------------------------------------------------------------------------
@@ -514,7 +551,7 @@ def get_transfer_detail(
 
     names = _store_names(database)
     sku, product_name = _product_label(database, doc["product_id"])
-    return _build_detail(doc, viewer_store_oid, names, sku, product_name)
+    return _build_detail(doc, viewer_store_oid, names, sku, product_name, db=database)
 
 
 def contact_supplier_transfer(
@@ -525,6 +562,7 @@ def contact_supplier_transfer(
     """Move a fully-declined request into supplier fulfilment.
 
     Supplier fulfilment is inventory-agnostic: we do not validate donor stock.
+    Creates a purchase order linked to the transfer.
     """
     database = db if db is not None else get_db()
     _maybe_auto_complete(database)
@@ -545,8 +583,28 @@ def contact_supplier_transfer(
     if doc.get("status") != STATUS_DECLINED:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transfer is not in a declinable state")
 
+    supplier = _best_supplier_for_product(database, doc["product_id"])
+    if supplier is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No approved supplier available for this product",
+        )
+
     now = _now()
-    lead_days = _best_supplier_lead_days(database, doc["product_id"])
+    lead_days = int(supplier["lead_days"])
+    po_qty = max(int(doc["qty"]), int(supplier["min_order_qty"]))
+    expected_date = (now + timedelta(days=lead_days)).replace(tzinfo=None)
+
+    po_result = database.purchase_orders.insert_one(
+        {
+            "supplier_id": supplier["supplier_id"],
+            "store_id": requester_oid,
+            "product_id": doc["product_id"],
+            "qty": po_qty,
+            "expected_date": expected_date,
+            "status": "OPEN",
+        }
+    )
 
     database.stock_transfers.update_one(
         {"_id": transfer_oid},
@@ -556,27 +614,17 @@ def contact_supplier_transfer(
                 "accepted_at": now,
                 "dispatched_at": now,
                 "lead_days": lead_days,
-                # accepted_store_id intentionally not set for supplier fulfilment
+                "po_id": po_result.inserted_id,
             }
         },
     )
 
     names = _store_names(database)
     actor_name = names.get(requester_oid, requester_store_id)
-    database.stock_transfers.update_one(
-        {"_id": transfer_oid},
-        {
-            "$push": {
-                "events": {
-                    "at": now,
-                    "actor": actor_name,
-                    "action": "SUPPLIER_CONTACTED",
-                }
-            }
-        },
-    )
+    _append_event(database, transfer_oid, actor_name, "SUPPLIER_CONTACTED")
+    _append_event(database, transfer_oid, "system", "PO_CREATED")
 
     # Re-fetch for response
     doc = database.stock_transfers.find_one({"_id": transfer_oid})
     sku, product_name = _product_label(database, doc["product_id"])
-    return _build_detail(doc, requester_oid, names, sku, product_name)
+    return _build_detail(doc, requester_oid, names, sku, product_name, db=database)

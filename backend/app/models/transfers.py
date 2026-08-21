@@ -81,6 +81,14 @@ class MyTransfersResponse(BaseModel):
     incoming: List[IncomingTransfer]
 
 
+class TransferPurchaseOrder(BaseModel):
+    po_id: str
+    supplier_name: str
+    qty: int = Field(ge=1)
+    status: str
+    expected_date: Optional[datetime] = None
+
+
 class TransferDetail(BaseModel):
     transfer_id: str
     sku: str
@@ -97,3 +105,4 @@ class TransferDetail(BaseModel):
     completed_at: Optional[datetime] = None
     lead_days: Optional[int] = None
     events: List[TransferEvent] = Field(default_factory=list)
+    purchase_order: Optional[TransferPurchaseOrder] = None
