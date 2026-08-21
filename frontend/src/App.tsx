@@ -295,6 +295,17 @@ export default function App() {
     applyRoute("in_transit", transferId, null);
   }
 
+  function handleTrackProductStatus(transferId: string) {
+    const row = transfers?.outgoing.find((item) => item.transfer_id === transferId);
+    if (row?.status === "IN_TRANSIT") {
+      handleTrackShipment(transferId);
+      return;
+    }
+    writeRoute("transferred", { transferId });
+    loadTransferDetail(transferId);
+    setView("transferred");
+  }
+
   if (checkingSession) {
     return (
       <div className="shell">
@@ -423,7 +434,7 @@ export default function App() {
         forecasts={forecasts}
         activeByProduct={buildActiveFulfillments(outgoing)}
         onRequestProduct={handleRequestProduct}
-        onTrackShipment={handleTrackShipment}
+        onTrackShipment={handleTrackProductStatus}
       />
     );
   }

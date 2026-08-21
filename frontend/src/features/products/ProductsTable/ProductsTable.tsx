@@ -1,5 +1,5 @@
 import "./ProductsTable.css";
-import { Button, IdentityCell, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
+import { IdentityCell, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
 import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
 import type { ForecastResponse, InventoryItem } from "../../../types.ts";
 
@@ -10,7 +10,6 @@ type ProductsTableProps = {
   activeByProduct: Record<string, ActiveFulfillment>;
   selectedId: string | null;
   onSelect: (productId: string) => void;
-  onTrackShipment: (transferId: string) => void;
 };
 
 export default function ProductsTable({
@@ -20,7 +19,6 @@ export default function ProductsTable({
   activeByProduct,
   selectedId,
   onSelect,
-  onTrackShipment,
 }: ProductsTableProps) {
   return (
     <>
@@ -42,7 +40,6 @@ export default function ProductsTable({
               const forecast = forecasts[item.product_id];
               const risk = forecast?.risk;
               const active = activeByProduct[item.product_id];
-              const shipmentComing = active?.status === "IN_TRANSIT";
 
               return (
                 <tr
@@ -63,22 +60,9 @@ export default function ProductsTable({
                   <td className="num">{forecast?.predicted_shortage_qty ?? "—"}</td>
                   <td>{risk ? <RiskBadge risk={risk} /> : "—"}</td>
                   <td>
-                    <div className="row-actions">
-                      {shipmentComing && active ? (
-                        <Button
-                          variant="ghost"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onTrackShipment(active.transferId);
-                          }}
-                        >
-                          Track
-                        </Button>
-                      ) : null}
-                      {risk === "HIGH" && active && !shipmentComing ? (
-                        <span className="muted-label">{fulfillmentStatusLabel(active.status)}</span>
-                      ) : null}
-                    </div>
+                    {active ? (
+                      <span className="muted-label">{fulfillmentStatusLabel(active.status)}</span>
+                    ) : null}
                   </td>
                 </tr>
               );

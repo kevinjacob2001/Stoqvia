@@ -73,11 +73,13 @@ export default function ProductDrawer({
           <p>
             {fulfillmentStatusLabel(active.status)} · {active.qty} units
           </p>
-          {active.status === "IN_TRANSIT" ? (
-            <Button variant="ghost" onClick={() => onTrackShipment(active.transferId)}>
-              Track shipment
-            </Button>
-          ) : null}
+          <Button
+            variant="primary"
+            className="drawer-cta"
+            onClick={() => onTrackShipment(active.transferId)}
+          >
+            Track product status
+          </Button>
         </div>
       ) : null}
 

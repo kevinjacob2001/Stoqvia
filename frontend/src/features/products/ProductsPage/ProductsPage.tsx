@@ -67,7 +67,6 @@ export default function ProductsPage({
           activeByProduct={activeByProduct}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          onTrackShipment={onTrackShipment}
         />
       </div>
 
