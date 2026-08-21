@@ -92,6 +92,7 @@ class IncomingTransfer(BaseModel):
     qty: int = Field(ge=1)
     remaining_qty: int = Field(ge=0)
     requester_store_name: str
+    requester_distance_km: Optional[float] = None
     my_status: str
     my_accepted_qty: Optional[int] = None
     my_allocation: Optional[TransferAllocation] = None

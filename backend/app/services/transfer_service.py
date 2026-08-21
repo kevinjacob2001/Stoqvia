@@ -187,6 +187,22 @@ def _store_transit_lead_days(db: Database, from_store_oid: Any, to_store_oid: An
     return transit_lead_days(kilometres)
 
 
+def _store_distance_km(db: Database, from_store_oid: Any, to_store_oid: Any) -> Optional[float]:
+    origin = db.stores.find_one({"_id": from_store_oid})
+    dest = db.stores.find_one({"_id": to_store_oid})
+    if origin is None or dest is None:
+        return None
+    return round(
+        distance_km(
+            float(origin["latitude"]),
+            float(origin["longitude"]),
+            float(dest["latitude"]),
+            float(dest["longitude"]),
+        ),
+        1,
+    )
+
+
 def _donor_safe_surplus(db: Database, store_id: str, product_id: str) -> int:
     """Units this store can spare while remaining LOW risk after the transfer."""
     forecast = forecast_service.get_forecast(store_id, product_id, db=db)
@@ -409,11 +425,13 @@ def _build_incoming(
     my_invite = next(inv for inv in doc["invited"] if inv["store_id"] == store_oid)
     my_alloc_doc = _find_store_allocation(doc, store_oid)
     delivery_lead_days = None
+    requester_distance_km = None
     safe_surplus = None
     max_accept_qty = None
     remaining = _remaining(doc)
     if db is not None:
         delivery_lead_days = _store_transit_lead_days(db, store_oid, doc["requester_store_id"])
+        requester_distance_km = _store_distance_km(db, store_oid, doc["requester_store_id"])
         if my_invite["status"] in (INVITE_PENDING, INVITE_CHECKING) and doc["status"] == STATUS_OPEN:
             safe_surplus = _donor_safe_surplus(db, str(store_oid), str(doc["product_id"]))
             max_accept_qty = min(remaining, safe_surplus) if safe_surplus > 0 and remaining > 0 else 0
@@ -424,6 +442,7 @@ def _build_incoming(
         qty=int(doc["qty"]),
         remaining_qty=remaining,
         requester_store_name=names.get(doc["requester_store_id"], ""),
+        requester_distance_km=requester_distance_km,
         my_status=my_invite["status"],
         my_accepted_qty=int(my_invite["accepted_qty"]) if my_invite.get("accepted_qty") is not None else None,
         my_allocation=_build_allocation(my_alloc_doc, names) if my_alloc_doc else None,

@@ -122,6 +122,7 @@ export type IncomingTransfer = {
   qty: number;
   remaining_qty: number;
   requester_store_name: string;
+  requester_distance_km: number | null;
   my_status: string;
   my_accepted_qty: number | null;
   my_allocation: TransferAllocation | null;
