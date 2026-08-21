@@ -31,6 +31,14 @@ def create_transfer(
     return transfer_service.create_transfer(me.store_id, body.product_id, body.donor_store_ids)
 
 
+@router.post("/transfers/jobs/complete-due")
+def run_complete_due(token: str = Depends(require_token)) -> dict:
+    """Manually run the due-transfer completion sweep (also runs on a timer)."""
+    auth_service.get_me(token)
+    completed = transfer_service.complete_due_transfers()
+    return {"completed": completed}
+
+
 @router.post("/transfers/{transfer_id}/respond", response_model=IncomingTransfer)
 def respond_to_transfer(
     transfer_id: str,

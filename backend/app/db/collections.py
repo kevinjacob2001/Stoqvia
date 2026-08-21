@@ -213,11 +213,33 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                         "properties": {
                             "store_id": _object_id(),
                             "status": _string(),
+                            "accepted_qty": _int_min(1),
                         },
                         "additionalProperties": False,
                     },
                 },
                 # Optional fields set as the transfer progresses
+                "remaining_qty": _int_min(0),
+                "allocations": {
+                    "bsonType": "array",
+                    "items": {
+                        "bsonType": "object",
+                        "required": ["allocation_id", "source", "qty", "status"],
+                        "properties": {
+                            "allocation_id": _object_id(),
+                            "source": _string(),
+                            "store_id": _object_id(),
+                            "qty": _int_min(1),
+                            "status": _string(),
+                            "accepted_at": _date(),
+                            "dispatched_at": _date(),
+                            "completed_at": _date(),
+                            "lead_days": _int_min(0),
+                            "po_id": _object_id(),
+                        },
+                        "additionalProperties": False,
+                    },
+                },
                 "accepted_store_id": _object_id(),
                 "accepted_at": _date(),
                 "dispatched_at": _date(),

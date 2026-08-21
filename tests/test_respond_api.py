@@ -66,11 +66,14 @@ def _broadcast(client, cbd_token, product_id, donor_ids):
     return r.json()["transfer_id"]
 
 
-def _respond(client, token, transfer_id, action):
+def _respond(client, token, transfer_id, action, qty=None):
+    body = {"action": action}
+    if qty is not None:
+        body["qty"] = qty
     return client.post(
         f"/api/v1/transfers/{transfer_id}/respond",
         headers=_auth(token),
-        json={"action": action},
+        json=body,
     )
 
 
@@ -99,17 +102,73 @@ def test_accept_closes_request_and_passes_others(client: TestClient) -> None:
     assert mile_invite["status"] == "PASSED"
 
 
-def test_second_accept_rejected_after_first(client: TestClient) -> None:
+def test_second_accept_rejected_after_full_accept(client: TestClient) -> None:
     product_id, marion_id, mile_id = _drill_ids()
     cbd = _login(client, "admin.cbd", "cbd123")
     tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
 
     marion = _login(client, "admin.marion", "marion123")
-    _respond(client, marion["token"], tid, "ACCEPT")
+    _respond(client, marion["token"], tid, "ACCEPT")  # accepts all remaining
 
     mile = _login(client, "admin.mileend", "mileend123")
     r = _respond(client, mile["token"], tid, "ACCEPT")
     assert r.status_code == 409
+
+
+def test_partial_accept_keeps_request_open_for_others(client: TestClient) -> None:
+    product_id, marion_id, mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
+
+    detail0 = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    total = detail0["qty"]
+    assert total >= 2
+
+    marion = _login(client, "admin.marion", "marion123")
+    r = _respond(client, marion["token"], tid, "ACCEPT", qty=1)
+    assert r.status_code == 200
+    payload = r.json()
+    assert payload["my_status"] == "ACCEPTED"
+    assert payload["my_accepted_qty"] == 1
+    assert payload["remaining_qty"] == total - 1
+    assert payload["status"] == "OPEN"
+    assert any(ev["action"] == "PARTIAL_ACCEPTED" for ev in payload["events"])
+
+    mile = _login(client, "admin.mileend", "mileend123")
+    inbox = client.get("/api/v1/transfers", headers=_auth(mile["token"])).json()["incoming"][0]
+    assert inbox["my_status"] == "PENDING"
+    assert inbox["remaining_qty"] == total - 1
+
+    # Mile End can cover the remainder
+    r2 = _respond(client, mile["token"], tid, "ACCEPT", qty=total - 1)
+    assert r2.status_code == 200
+    assert r2.json()["remaining_qty"] == 0
+    assert r2.json()["status"] == "FULFILLED"
+
+
+def test_partial_accept_then_decline_escalates_remainder_to_supplier(client: TestClient) -> None:
+    product_id, marion_id, mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
+    total = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()["qty"]
+
+    marion = _login(client, "admin.marion", "marion123")
+    mile = _login(client, "admin.mileend", "mileend123")
+    assert _respond(client, marion["token"], tid, "ACCEPT", qty=1).status_code == 200
+    assert _respond(client, mile["token"], tid, "DECLINE").status_code == 200
+
+    detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    assert detail["remaining_qty"] == 0
+    assert detail["status"] == "IN_TRANSIT"
+    assert detail["purchase_order"] is not None
+    assert detail["purchase_order"]["qty"] >= total - 1
+    sources = {a["source"] for a in detail["allocations"]}
+    assert sources == {"store", "supplier"}
+    store_alloc = next(a for a in detail["allocations"] if a["source"] == "store")
+    assert store_alloc["qty"] == 1
+    assert store_alloc["status"] == "FULFILLED"
+    supplier_alloc = next(a for a in detail["allocations"] if a["source"] == "supplier")
+    assert supplier_alloc["status"] == "IN_TRANSIT"
 
 
 def test_decline_local_others_unaffected(client: TestClient) -> None:
@@ -243,16 +302,92 @@ def test_all_declines_auto_po_then_completed(client: TestClient) -> None:
     po_id = doc["po_id"]
 
     now = datetime.now(timezone.utc)
+    allocs = list(doc.get("allocations", []))
+    for alloc in allocs:
+        if alloc.get("status") == "IN_TRANSIT":
+            lead = int(alloc.get("lead_days", lead_days))
+            alloc["dispatched_at"] = now - timedelta(days=lead)
     db.stock_transfers.update_one(
         {"_id": ObjectId(tid)},
-        {"$set": {"dispatched_at": now - timedelta(days=lead_days)}},
+        {
+            "$set": {
+                "dispatched_at": now - timedelta(days=lead_days),
+                "allocations": allocs,
+            }
+        },
     )
+
+    # Detail alone must NOT complete — that is the scheduler/job's job.
+    still_open = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    assert still_open["status"] == "IN_TRANSIT"
+    assert still_open["purchase_order"]["status"] == "OPEN"
+
+    job = client.post("/api/v1/transfers/jobs/complete-due", headers=_auth(cbd["token"]))
+    assert job.status_code == 200
+    assert job.json()["completed"] == 1
 
     completed = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
     assert completed["status"] == "COMPLETED"
     assert completed["purchase_order"]["status"] == "RECEIVED"
+    assert any(ev["action"] == "RECEIVED" for ev in completed["events"])
     assert any(ev["action"] == "PO_RECEIVED" for ev in completed["events"])
+    assert any(ev["actor"] == "System" for ev in completed["events"] if ev["action"] == "RECEIVED")
 
     po = db.purchase_orders.find_one({"_id": po_id})
     assert po is not None
     assert po["status"] == "RECEIVED"
+
+
+def test_complete_due_skips_transfers_still_within_lead_days(client: TestClient) -> None:
+    product_id, marion_id, mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
+
+    marion = _login(client, "admin.marion", "marion123")
+    mile = _login(client, "admin.mileend", "mileend123")
+    _respond(client, marion["token"], tid, "DECLINE")
+    _respond(client, mile["token"], tid, "DECLINE")
+
+    job = client.post("/api/v1/transfers/jobs/complete-due", headers=_auth(cbd["token"]))
+    assert job.status_code == 200
+    assert job.json()["completed"] == 0
+
+    detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    assert detail["status"] == "IN_TRANSIT"
+
+
+def test_store_dispatch_then_job_marks_received(client: TestClient) -> None:
+    product_id, marion_id, _mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id])
+
+    marion = _login(client, "admin.marion", "marion123")
+    assert _respond(client, marion["token"], tid, "ACCEPT").status_code == 200
+    dispatch = client.post(f"/api/v1/transfers/{tid}/dispatch", headers=_auth(marion["token"]))
+    assert dispatch.status_code == 200
+    assert dispatch.json()["status"] == "IN_TRANSIT"
+
+    db = get_db()
+    from bson import ObjectId
+
+    doc = db.stock_transfers.find_one({"_id": ObjectId(tid)})
+    assert doc is not None
+    lead_days = int(doc["lead_days"])
+    now = datetime.now(timezone.utc)
+    allocs = list(doc.get("allocations", []))
+    for alloc in allocs:
+        if alloc.get("status") == "IN_TRANSIT":
+            lead = int(alloc.get("lead_days", lead_days))
+            alloc["dispatched_at"] = now - timedelta(days=lead)
+    db.stock_transfers.update_one(
+        {"_id": ObjectId(tid)},
+        {"$set": {"dispatched_at": now - timedelta(days=lead_days), "allocations": allocs}},
+    )
+
+    job = client.post("/api/v1/transfers/jobs/complete-due", headers=_auth(cbd["token"]))
+    assert job.status_code == 200
+    assert job.json()["completed"] == 1
+
+    detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    assert detail["status"] == "COMPLETED"
+    assert any(ev["action"] == "RECEIVED" and ev["actor"] == "System" for ev in detail["events"])

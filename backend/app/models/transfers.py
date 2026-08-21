@@ -19,6 +19,13 @@ INVITE_DECLINED = "DECLINED"
 INVITE_CHECKING = "CHECKING"
 INVITE_PASSED = "PASSED"
 
+# Allocation sources / statuses
+ALLOC_SOURCE_STORE = "store"
+ALLOC_SOURCE_SUPPLIER = "supplier"
+ALLOC_FULFILLED = "FULFILLED"
+ALLOC_IN_TRANSIT = "IN_TRANSIT"
+ALLOC_COMPLETED = "COMPLETED"
+
 
 class CreateTransferRequest(BaseModel):
     product_id: str = Field(min_length=1)
@@ -27,12 +34,29 @@ class CreateTransferRequest(BaseModel):
 
 class RespondToTransferRequest(BaseModel):
     action: RespondAction
+    # Required for ACCEPT when fulfilling a partial amount; omit to accept all remaining.
+    qty: Optional[int] = Field(default=None, ge=1)
 
 
 class InviteStatus(BaseModel):
     store_id: str
     store_name: str
     status: str
+    accepted_qty: Optional[int] = None
+
+
+class TransferAllocation(BaseModel):
+    allocation_id: str
+    source: str
+    store_id: Optional[str] = None
+    store_name: Optional[str] = None
+    qty: int = Field(ge=1)
+    status: str
+    accepted_at: Optional[datetime] = None
+    dispatched_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    lead_days: Optional[int] = None
+    po_id: Optional[str] = None
 
 
 class TransferEvent(BaseModel):
@@ -43,11 +67,14 @@ class TransferEvent(BaseModel):
 
 class OutgoingTransfer(BaseModel):
     transfer_id: str
+    product_id: str
     sku: str
     product_name: str
     qty: int = Field(ge=1)
+    remaining_qty: int = Field(ge=0)
     status: str
     invited: List[InviteStatus]
+    allocations: List[TransferAllocation] = Field(default_factory=list)
     # Progress timestamps
     created_at: Optional[datetime] = None
     accepted_at: Optional[datetime] = None
@@ -63,10 +90,13 @@ class IncomingTransfer(BaseModel):
     sku: str
     product_name: str
     qty: int = Field(ge=1)
+    remaining_qty: int = Field(ge=0)
     requester_store_name: str
     my_status: str
+    my_accepted_qty: Optional[int] = None
+    my_allocation: Optional[TransferAllocation] = None
     all_invited: List[InviteStatus]
-    # Progress timestamps (visible once accepted)
+    allocations: List[TransferAllocation] = Field(default_factory=list)
     status: str = STATUS_OPEN
     created_at: Optional[datetime] = None
     accepted_at: Optional[datetime] = None
@@ -94,11 +124,13 @@ class TransferDetail(BaseModel):
     sku: str
     product_name: str
     qty: int = Field(ge=1)
+    remaining_qty: int = Field(ge=0)
     status: str
     requester_store_name: str
     accepted_store_name: Optional[str] = None
     my_status: Optional[str] = None
     invited: List[InviteStatus]
+    allocations: List[TransferAllocation] = Field(default_factory=list)
     created_at: Optional[datetime] = None
     accepted_at: Optional[datetime] = None
     dispatched_at: Optional[datetime] = None

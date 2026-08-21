@@ -15,7 +15,7 @@ type TransferTablesProps = {
   myStoreId: string;
   responding: string | null;
   dispatching: string | null;
-  onRespond: (transferId: string, action: RespondAction) => void;
+  onRespond: (transferId: string, action: RespondAction, qty?: number) => void;
   onDispatch: (transferId: string) => void;
   onOpenTransfer: (transferId: string) => void;
   selectedTransferId: string | null;
@@ -33,19 +33,28 @@ const STATUS_LABEL: Record<string, string> = {
   OPEN: "Open",
   FULFILLED: "Accepted, awaiting dispatch",
   IN_TRANSIT: "In transit",
-  COMPLETED: "Completed",
+  COMPLETED: "Received",
   REQUESTED: "Request created",
-  DISPATCHED: "Dispatched",
+  DISPATCHED: "Dispatched to requester",
   CLEAR_CHECK: "Stock review cleared",
   CHECK_STOCK: "Stock review started",
   ALL_DECLINED: "All invited stores declined",
   SUPPLIER_ESCALATED: "Escalated to supplier",
   PO_CREATED: "Purchase order created",
   PO_RECEIVED: "Purchase order received",
+  RECEIVED: "Stock received at store",
+  PARTIAL_ACCEPTED: "Partially accepted",
+  REMAINING_UPDATED: "Remaining qty updated for other stores",
 };
 
 function label(s: string) {
   return STATUS_LABEL[s] ?? s;
+}
+
+function actorLabel(actor: string) {
+  if (actor === "system" || actor === "System") return "System";
+  if (actor === "supplier" || actor === "Supplier") return "Supplier";
+  return actor;
 }
 
 function fmt(iso: string | null) {
@@ -60,7 +69,7 @@ function fmt(iso: string | null) {
   });
 }
 
-const STAGES = ["Requested", "Accepted", "Dispatched", "Completed"] as const;
+const STAGES = ["Requested", "Accepted", "Dispatched", "Received"] as const;
 
 function ProgressBar({
   status,
@@ -79,14 +88,14 @@ function ProgressBar({
     if (stage === "Requested") return true;
     if (stage === "Accepted") return !!acceptedAt;
     if (stage === "Dispatched") return !!dispatchedAt;
-    if (stage === "Completed") return status === "COMPLETED";
+    if (stage === "Received") return status === "COMPLETED";
     return false;
   };
   const times: Record<string, string | null> = {
     Requested: createdAt,
     Accepted: acceptedAt,
     Dispatched: dispatchedAt,
-    Completed: completedAt,
+    Received: completedAt,
   };
 
   return (
@@ -136,7 +145,7 @@ function EventTimeline({ events }: { events: TransferEvent[] }) {
       {events.map((ev, i) => (
         <div key={i} style={{ display: "flex", gap: 8, fontSize: "0.78rem", color: "#5b6b7c", marginBottom: 2 }}>
           <span style={{ minWidth: 150 }}>{fmt(ev.at)}</span>
-          <span style={{ fontWeight: 500, color: "#102033" }}>{ev.actor}</span>
+          <span style={{ fontWeight: 500, color: "#102033" }}>{actorLabel(ev.actor)}</span>
           <span>{label(ev.action)}</span>
         </div>
       ))}
@@ -173,7 +182,8 @@ function DetailPage({
                 <strong>{detail.product_name}</strong> <small style={{ color: "#5b6b7c" }}>{detail.sku}</small>
               </div>
               <div style={{ fontSize: "0.85rem", color: "#5b6b7c", marginTop: 4 }}>
-                Requested by {detail.requester_store_name} · {detail.qty} units · {label(detail.status)}
+                Requested by {detail.requester_store_name} · {detail.qty} units
+                {detail.remaining_qty > 0 ? ` · still need ${detail.remaining_qty}` : ""} · {label(detail.status)}
               </div>
               {detail.my_status ? (
                 <div style={{ fontSize: "0.85rem", color: "#5b6b7c", marginTop: 2 }}>
@@ -233,7 +243,7 @@ function DetailPage({
 
             {detail.status === "COMPLETED" ? (
               <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
-                Completed. This transfer has reached the final stage.
+                Received — stock has arrived at the requesting store.
               </p>
             ) : null}
 
@@ -249,9 +259,23 @@ function DetailPage({
             {detail.invited.map((inv) => (
               <div key={inv.store_id} style={{ fontSize: "0.84rem", color: "#5b6b7c", marginBottom: 3 }}>
                 <span style={{ color: "#102033", fontWeight: 500 }}>{inv.store_name}</span> — {label(inv.status)}
+                {inv.accepted_qty != null ? ` (${inv.accepted_qty} units)` : ""}
               </div>
             ))}
           </div>
+          {detail.allocations.length > 0 ? (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>Fulfilments</p>
+              {detail.allocations.map((alloc) => (
+                <div key={alloc.allocation_id} style={{ fontSize: "0.84rem", color: "#5b6b7c", marginBottom: 3 }}>
+                  <span style={{ color: "#102033", fontWeight: 500 }}>
+                    {alloc.store_name ?? (alloc.source === "supplier" ? "Supplier" : "Store")}
+                  </span>
+                  {` — ${alloc.qty} units · ${label(alloc.status)}`}
+                </div>
+              ))}
+            </div>
+          ) : null}
           {detail.purchase_order ? (
             <div style={{ marginTop: 14 }}>
               <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>
@@ -291,7 +315,7 @@ function ReceivedTable({
 }: {
   incoming: IncomingTransfer[];
   responding: string | null;
-  onRespond: (id: string, action: RespondAction) => void;
+  onRespond: (id: string, action: RespondAction, qty?: number) => void;
   onOpenTransfer: (id: string) => void;
 }) {
   const active = incoming.filter((r) => ["PENDING", "CHECKING"].includes(r.my_status));
@@ -307,7 +331,7 @@ function ReceivedTable({
             <tr>
               <th>From</th>
               <th>Product</th>
-              <th className="num">Qty</th>
+              <th className="num">Need</th>
               <th>Also invited</th>
               <th>My status</th>
               <th></th>
@@ -321,13 +345,25 @@ function ReceivedTable({
                   {row.product_name}
                   <small>{row.sku}</small>
                   <small style={{ display: "block", color: "#8a9aaa" }}>ID {row.transfer_id}</small>
+                  {row.remaining_qty < row.qty ? (
+                    <small style={{ display: "block", color: "#b54708", fontWeight: 600 }}>
+                      Partial progress — still need {row.remaining_qty} of {row.qty}
+                    </small>
+                  ) : null}
                 </td>
-                <td className="num">{row.qty}</td>
+                <td className="num">
+                  <strong>{row.remaining_qty}</strong>
+                  <small style={{ display: "block", color: "#8a9aaa" }}>of {row.qty}</small>
+                </td>
                 <td>
                   {row.all_invited.map((inv) => (
                     <span key={inv.store_id} style={{ display: "block" }}>
                       {inv.store_name}
-                      <small style={{ color: "#5b6b7c" }}> — {label(inv.status)}</small>
+                      <small style={{ color: "#5b6b7c" }}>
+                        {" "}
+                        — {label(inv.status)}
+                        {inv.accepted_qty != null ? ` (${inv.accepted_qty})` : ""}
+                      </small>
                     </span>
                   ))}
                 </td>
@@ -340,8 +376,9 @@ function ReceivedTable({
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <ActionButtons
                       status={row.my_status}
+                      remainingQty={row.remaining_qty}
                       busy={responding === row.transfer_id}
-                      onRespond={(action) => onRespond(row.transfer_id, action)}
+                      onRespond={(action, qty) => onRespond(row.transfer_id, action, qty)}
                     />
                     <DetailButton onClick={() => onOpenTransfer(row.transfer_id)} />
                   </div>
@@ -373,7 +410,7 @@ function ReceivedTable({
                     <small>{row.sku}</small>
                     <small style={{ display: "block", color: "#8a9aaa" }}>ID {row.transfer_id}</small>
                   </td>
-                  <td className="num">{row.qty}</td>
+                  <td className="num">{row.my_accepted_qty ?? row.qty}</td>
                   <td style={{ color: row.my_status === "DECLINED" ? "#b42318" : "#5b6b7c" }}>{label(row.my_status)}</td>
                   <td>
                     <DetailButton onClick={() => onOpenTransfer(row.transfer_id)} />
@@ -399,9 +436,7 @@ function AcceptedTable({
   onDispatch: (id: string) => void;
   onOpenTransfer: (id: string) => void;
 }) {
-  const accepted = incoming.filter(
-    (r) => r.my_status === "ACCEPTED" && ["FULFILLED", "IN_TRANSIT", "COMPLETED"].includes(r.status),
-  );
+  const accepted = incoming.filter((r) => r.my_status === "ACCEPTED");
   if (accepted.length === 0) {
     return (
       <section className="panel">
@@ -418,18 +453,24 @@ function AcceptedTable({
           key={row.transfer_id}
           title={row.product_name}
           sku={row.sku}
-          subtitle={`Requested by ${row.requester_store_name} · ${row.qty} units`}
+          subtitle={`Requested by ${row.requester_store_name} · you accepted ${row.my_accepted_qty ?? row.qty} of ${row.qty}`}
           transferId={row.transfer_id}
-          status={row.status}
+          status={row.my_allocation?.status ?? row.status}
           createdAt={row.created_at}
-          acceptedAt={row.accepted_at}
-          dispatchedAt={row.dispatched_at}
-          completedAt={row.completed_at}
+          acceptedAt={row.my_allocation?.accepted_at ?? row.accepted_at}
+          dispatchedAt={row.my_allocation?.dispatched_at ?? row.dispatched_at}
+          completedAt={row.my_allocation?.completed_at ?? row.completed_at}
           events={row.events}
-          footer={row.lead_days != null ? `Auto-completes ${row.lead_days} day${row.lead_days !== 1 ? "s" : ""} after dispatch` : undefined}
+          footer={
+            row.remaining_qty > 0
+              ? `Other stores still need to cover ${row.remaining_qty} more units`
+              : row.lead_days != null
+                ? `Auto-completes ${row.lead_days} day${row.lead_days !== 1 ? "s" : ""} after dispatch`
+                : undefined
+          }
           actions={
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {row.status === "FULFILLED" ? (
+              {row.my_allocation?.status === "FULFILLED" ? (
                 <button className="retry-button" type="button" disabled={dispatching === row.transfer_id} onClick={() => onDispatch(row.transfer_id)}>
                   {dispatching === row.transfer_id ? "Dispatching…" : "Confirm dispatched"}
                 </button>
@@ -583,7 +624,7 @@ function TransferredTable({
           key={row.transfer_id}
           title={row.product_name}
           sku={row.sku}
-          subtitle={`${row.qty} units · ${label(row.status)}`}
+          subtitle={`${row.qty} units · ${row.remaining_qty > 0 ? `${row.remaining_qty} still needed · ` : ""}${label(row.status)}`}
           transferId={row.transfer_id}
           status={row.status}
           createdAt={row.created_at}
@@ -662,17 +703,33 @@ function TransferCard({
 
 function ActionButtons({
   status,
+  remainingQty,
   busy,
   onRespond,
 }: {
   status: string;
+  remainingQty: number;
   busy: boolean;
-  onRespond: (action: RespondAction) => void;
+  onRespond: (action: RespondAction, qty?: number) => void;
 }) {
+  function handleAccept() {
+    const raw = window.prompt(
+      `How many units can you fulfil? (1–${remainingQty})`,
+      String(remainingQty),
+    );
+    if (raw == null) return;
+    const qty = Number.parseInt(raw, 10);
+    if (!Number.isFinite(qty) || qty < 1 || qty > remainingQty) {
+      window.alert(`Enter a whole number between 1 and ${remainingQty}.`);
+      return;
+    }
+    onRespond("ACCEPT", qty);
+  }
+
   if (status === "CHECKING") {
     return (
       <>
-        <button className="retry-button" type="button" disabled={busy} onClick={() => onRespond("ACCEPT")}>
+        <button className="retry-button" type="button" disabled={busy} onClick={handleAccept}>
           Accept
         </button>
         <button className="ghost-button" type="button" disabled={busy} onClick={() => onRespond("CLEAR_CHECK")}>
@@ -686,7 +743,7 @@ function ActionButtons({
   }
   return (
     <>
-      <button className="retry-button" type="button" disabled={busy} onClick={() => onRespond("ACCEPT")}>
+      <button className="retry-button" type="button" disabled={busy} onClick={handleAccept}>
         Accept
       </button>
       <button className="ghost-button" type="button" disabled={busy} onClick={() => onRespond("CHECK_STOCK")}>
@@ -714,7 +771,7 @@ export default function TransferTables({
   loadingTransferDetail,
   onCloseTransferDetail,
 }: TransferTablesProps) {
-  if (selectedTransferId) {
+  if (selectedTransferId && (loadingTransferDetail || transferDetail)) {
     return (
       <DetailPage
         detail={transferDetail}

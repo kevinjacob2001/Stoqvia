@@ -26,7 +26,16 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
 
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string" && body.detail) {
+        message = body.detail;
+      }
+    } catch {
+      // Keep status text when body is not JSON.
+    }
+    throw new Error(message);
   }
   return response.json() as Promise<T>;
 }
@@ -71,10 +80,13 @@ export function createTransfer(
 export function respondToTransfer(
   transferId: string,
   action: RespondAction,
+  qty?: number,
 ): Promise<IncomingTransfer> {
+  const body: { action: RespondAction; qty?: number } = { action };
+  if (qty != null) body.qty = qty;
   return requestJson<IncomingTransfer>(`/transfers/${transferId}/respond`, {
     method: "POST",
-    body: JSON.stringify({ action }),
+    body: JSON.stringify(body),
   });
 }
 

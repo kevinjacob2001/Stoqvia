@@ -1,4 +1,4 @@
-"""Transfer lifecycle: broadcast → Accept → Dispatch → Auto-complete."""
+"""Transfer lifecycle: broadcast → partial Accept → Dispatch → Auto-complete."""
 
 from __future__ import annotations
 
@@ -11,6 +11,11 @@ from pymongo.database import Database
 
 from app.db import get_db
 from app.models.transfers import (
+    ALLOC_COMPLETED,
+    ALLOC_FULFILLED,
+    ALLOC_IN_TRANSIT,
+    ALLOC_SOURCE_STORE,
+    ALLOC_SOURCE_SUPPLIER,
     IncomingTransfer,
     InviteStatus,
     MyTransfersResponse,
@@ -26,6 +31,7 @@ from app.models.transfers import (
     INVITE_DECLINED,
     INVITE_PASSED,
     INVITE_PENDING,
+    TransferAllocation,
     TransferDetail,
     TransferEvent,
     TransferPurchaseOrder,
@@ -33,12 +39,11 @@ from app.models.transfers import (
 from app.services.inventory_service import parse_object_id
 from app.services.request_options_service import get_request_options
 
-DEFAULT_LEAD_DAYS = 2  # fallback when no supplier link found
+DEFAULT_LEAD_DAYS = 2
+ACTIVE_FULFILLMENT_STATUSES = (STATUS_OPEN, STATUS_FULFILLED, STATUS_IN_TRANSIT)
 
 
 def _now() -> datetime:
-    # Keep timezone information so the frontend can render correct "now-based" timings.
-    # Mongo stores datetimes as BSON dates; Pydantic will serialize consistently.
     return datetime.now(timezone.utc)
 
 
@@ -61,16 +66,84 @@ def _eligible_donor_ids(options) -> Set[str]:
     return ids
 
 
+def _remaining(doc: dict) -> int:
+    if "remaining_qty" in doc:
+        return max(0, int(doc["remaining_qty"]))
+    return max(0, int(doc["qty"]))
+
+
 def _build_invite_status(invite: dict, names: Dict[Any, str]) -> InviteStatus:
     return InviteStatus(
         store_id=str(invite["store_id"]),
         store_name=names.get(invite["store_id"], ""),
         status=invite["status"],
+        accepted_qty=int(invite["accepted_qty"]) if invite.get("accepted_qty") is not None else None,
     )
 
 
+def _build_allocation(alloc: dict, names: Dict[Any, str]) -> TransferAllocation:
+    store_id = alloc.get("store_id")
+    return TransferAllocation(
+        allocation_id=str(alloc["allocation_id"]),
+        source=alloc["source"],
+        store_id=str(store_id) if store_id is not None else None,
+        store_name=names.get(store_id) if store_id is not None else (
+            "Supplier" if alloc["source"] == ALLOC_SOURCE_SUPPLIER else None
+        ),
+        qty=int(alloc["qty"]),
+        status=alloc["status"],
+        accepted_at=alloc.get("accepted_at"),
+        dispatched_at=alloc.get("dispatched_at"),
+        completed_at=alloc.get("completed_at"),
+        lead_days=alloc.get("lead_days"),
+        po_id=str(alloc["po_id"]) if alloc.get("po_id") is not None else None,
+    )
+
+
+def _find_store_allocation(doc: dict, store_oid: Any) -> Optional[dict]:
+    for alloc in doc.get("allocations", []):
+        if alloc.get("source") == ALLOC_SOURCE_STORE and alloc.get("store_id") == store_oid:
+            return alloc
+    return None
+
+
+def _derive_status(doc: dict) -> str:
+    remaining = _remaining(doc)
+    allocs = doc.get("allocations", [])
+    invites = doc.get("invited", [])
+    has_open_invite = any(inv["status"] in (INVITE_PENDING, INVITE_CHECKING) for inv in invites)
+
+    if remaining > 0 and has_open_invite:
+        return STATUS_OPEN
+    if remaining > 0 and not has_open_invite and not allocs:
+        return STATUS_DECLINED
+    if remaining > 0 and not has_open_invite:
+        # Escalation pending or failed mid-flight — treat as open until escalate writes.
+        if any(a.get("source") == ALLOC_SOURCE_SUPPLIER for a in allocs):
+            pass
+        else:
+            return STATUS_DECLINED
+
+    if allocs and all(a["status"] == ALLOC_COMPLETED for a in allocs) and remaining == 0:
+        return STATUS_COMPLETED
+    if any(a["status"] == ALLOC_IN_TRANSIT for a in allocs):
+        return STATUS_IN_TRANSIT
+    if any(a["status"] == ALLOC_FULFILLED for a in allocs):
+        return STATUS_FULFILLED
+    if remaining == 0:
+        return STATUS_FULFILLED
+    return STATUS_OPEN
+
+
+def _set_derived_status(db: Database, transfer_oid: ObjectId, doc: dict) -> None:
+    status_value = _derive_status(doc)
+    extra: Dict[str, Any] = {"status": status_value}
+    if status_value == STATUS_COMPLETED and doc.get("completed_at") is None:
+        extra["completed_at"] = _now()
+    db.stock_transfers.update_one({"_id": transfer_oid}, {"$set": extra})
+
+
 def _get_lead_days(db: Database, store_oid: Any, product_oid: Any) -> int:
-    """Best lead_days from supplier_products for this store's supplier. Fallback to DEFAULT."""
     link = db.supplier_products.find_one({"product_id": product_oid})
     if link and "lead_days" in link:
         return max(1, int(link["lead_days"]))
@@ -78,7 +151,6 @@ def _get_lead_days(db: Database, store_oid: Any, product_oid: Any) -> int:
 
 
 def _best_supplier_for_product(db: Database, product_oid: Any) -> Optional[Dict[str, Any]]:
-    """Pick the best (lowest lead_days) approved supplier for a product."""
     best: Optional[Dict[str, Any]] = None
     links = list(db.supplier_products.find({"product_id": product_oid}))
     for link in links:
@@ -119,12 +191,25 @@ def _load_purchase_order(db: Database, po_id: Any) -> Optional[TransferPurchaseO
     )
 
 
-def _auto_escalate_to_supplier(db: Database, transfer_oid: ObjectId, doc: dict) -> None:
-    """After all invitees decline: create PO and move to IN_TRANSIT (inventory-agnostic).
+def _primary_po_id(doc: dict) -> Any:
+    if doc.get("po_id") is not None:
+        return doc["po_id"]
+    for alloc in reversed(doc.get("allocations", [])):
+        if alloc.get("po_id") is not None:
+            return alloc["po_id"]
+    return None
 
-    If no approved supplier exists, leave the transfer as DECLINED.
-    """
-    _append_event(db, transfer_oid, "system", "ALL_DECLINED")
+
+def _auto_escalate_remaining(db: Database, transfer_oid: ObjectId, doc: dict) -> None:
+    """When no invitees remain open: escalate leftover qty to supplier (or DECLINED)."""
+    remaining = _remaining(doc)
+    if remaining <= 0:
+        refreshed = db.stock_transfers.find_one({"_id": transfer_oid})
+        if refreshed is not None:
+            _set_derived_status(db, transfer_oid, refreshed)
+        return
+
+    _append_event(db, transfer_oid, "System", "ALL_DECLINED")
 
     supplier = _best_supplier_for_product(db, doc["product_id"])
     if supplier is None:
@@ -136,8 +221,9 @@ def _auto_escalate_to_supplier(db: Database, transfer_oid: ObjectId, doc: dict) 
 
     now = _now()
     lead_days = int(supplier["lead_days"])
-    po_qty = max(int(doc["qty"]), int(supplier["min_order_qty"]))
+    po_qty = max(remaining, int(supplier["min_order_qty"]))
     expected_date = (now + timedelta(days=lead_days)).replace(tzinfo=None)
+    allocation_id = ObjectId()
 
     po_result = db.purchase_orders.insert_one(
         {
@@ -150,20 +236,34 @@ def _auto_escalate_to_supplier(db: Database, transfer_oid: ObjectId, doc: dict) 
         }
     )
 
+    allocation = {
+        "allocation_id": allocation_id,
+        "source": ALLOC_SOURCE_SUPPLIER,
+        "qty": po_qty,
+        "status": ALLOC_IN_TRANSIT,
+        "accepted_at": now,
+        "dispatched_at": now,
+        "lead_days": lead_days,
+        "po_id": po_result.inserted_id,
+    }
     db.stock_transfers.update_one(
         {"_id": transfer_oid},
         {
             "$set": {
-                "status": STATUS_IN_TRANSIT,
-                "accepted_at": now,
+                "remaining_qty": 0,
                 "dispatched_at": now,
                 "lead_days": lead_days,
                 "po_id": po_result.inserted_id,
-            }
+                "accepted_at": doc.get("accepted_at") or now,
+            },
+            "$push": {"allocations": allocation},
         },
     )
-    _append_event(db, transfer_oid, "system", "SUPPLIER_ESCALATED")
-    _append_event(db, transfer_oid, "system", "PO_CREATED")
+    _append_event(db, transfer_oid, "System", "SUPPLIER_ESCALATED")
+    _append_event(db, transfer_oid, "System", "PO_CREATED")
+    refreshed = db.stock_transfers.find_one({"_id": transfer_oid})
+    if refreshed is not None:
+        _set_derived_status(db, transfer_oid, refreshed)
 
 
 def _append_event(db: Database, transfer_oid: ObjectId, actor: str, action: str) -> None:
@@ -173,22 +273,38 @@ def _append_event(db: Database, transfer_oid: ObjectId, actor: str, action: str)
     )
 
 
-def _build_outgoing(doc: dict, names: Dict[Any, str], sku: str, product_name: str) -> OutgoingTransfer:
-    accepted_store_name: Optional[str] = None
+def _accepted_store_label(
+    doc: dict, names: Dict[Any, str], supplier_name: Optional[str] = None
+) -> Optional[str]:
+    store_names: List[str] = []
+    for alloc in doc.get("allocations", []):
+        if alloc.get("source") == ALLOC_SOURCE_STORE and alloc.get("store_id") is not None:
+            store_names.append(names.get(alloc["store_id"], "Store"))
+        elif alloc.get("source") == ALLOC_SOURCE_SUPPLIER:
+            store_names.append(supplier_name or "Supplier")
+    if store_names:
+        return ", ".join(store_names)
     if doc.get("accepted_store_id"):
-        accepted_store_name = names.get(doc["accepted_store_id"])
+        return names.get(doc["accepted_store_id"])
+    return None
+
+
+def _build_outgoing(doc: dict, names: Dict[Any, str], sku: str, product_name: str) -> OutgoingTransfer:
     return OutgoingTransfer(
         transfer_id=str(doc["_id"]),
+        product_id=str(doc["product_id"]),
         sku=sku,
         product_name=product_name,
         qty=int(doc["qty"]),
+        remaining_qty=_remaining(doc),
         status=doc["status"],
         invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
+        allocations=[_build_allocation(a, names) for a in doc.get("allocations", [])],
         created_at=doc.get("created_at"),
         accepted_at=doc.get("accepted_at"),
         dispatched_at=doc.get("dispatched_at"),
         completed_at=doc.get("completed_at"),
-        accepted_store_name=accepted_store_name,
+        accepted_store_name=_accepted_store_label(doc, names),
         lead_days=doc.get("lead_days"),
         events=[TransferEvent(**e) for e in doc.get("events", [])],
     )
@@ -198,14 +314,19 @@ def _build_incoming(
     doc: dict, store_oid: Any, names: Dict[Any, str], sku: str, product_name: str
 ) -> IncomingTransfer:
     my_invite = next(inv for inv in doc["invited"] if inv["store_id"] == store_oid)
+    my_alloc_doc = _find_store_allocation(doc, store_oid)
     return IncomingTransfer(
         transfer_id=str(doc["_id"]),
         sku=sku,
         product_name=product_name,
         qty=int(doc["qty"]),
+        remaining_qty=_remaining(doc),
         requester_store_name=names.get(doc["requester_store_id"], ""),
         my_status=my_invite["status"],
+        my_accepted_qty=int(my_invite["accepted_qty"]) if my_invite.get("accepted_qty") is not None else None,
+        my_allocation=_build_allocation(my_alloc_doc, names) if my_alloc_doc else None,
         all_invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
+        allocations=[_build_allocation(a, names) for a in doc.get("allocations", [])],
         status=doc["status"],
         created_at=doc.get("created_at"),
         accepted_at=doc.get("accepted_at"),
@@ -225,31 +346,26 @@ def _build_detail(
     db: Optional[Database] = None,
 ) -> TransferDetail:
     purchase_order = None
-    if db is not None and doc.get("po_id") is not None:
-        purchase_order = _load_purchase_order(db, doc["po_id"])
+    if db is not None:
+        purchase_order = _load_purchase_order(db, _primary_po_id(doc))
 
-    accepted_store_name: Optional[str] = None
-    if doc.get("accepted_store_id"):
-        accepted_store_name = names.get(doc["accepted_store_id"])
-    elif purchase_order is not None:
-        accepted_store_name = purchase_order.supplier_name
-    elif doc.get("status") in (STATUS_IN_TRANSIT, STATUS_COMPLETED):
-        # Supplier fulfilment has no accepted_store_id.
-        accepted_store_name = "Supplier"
     my_invite = next(
         (inv for inv in doc["invited"] if inv["store_id"] == viewer_store_oid),
         None,
     )
+    supplier_name = purchase_order.supplier_name if purchase_order else None
     return TransferDetail(
         transfer_id=str(doc["_id"]),
         sku=sku,
         product_name=product_name,
         qty=int(doc["qty"]),
+        remaining_qty=_remaining(doc),
         status=doc["status"],
         requester_store_name=names.get(doc["requester_store_id"], ""),
-        accepted_store_name=accepted_store_name,
+        accepted_store_name=_accepted_store_label(doc, names, supplier_name=supplier_name),
         my_status=my_invite["status"] if my_invite else None,
         invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
+        allocations=[_build_allocation(a, names) for a in doc.get("allocations", [])],
         created_at=doc.get("created_at"),
         accepted_at=doc.get("accepted_at"),
         dispatched_at=doc.get("dispatched_at"),
@@ -260,47 +376,93 @@ def _build_detail(
     )
 
 
-# ---------------------------------------------------------------------------
-# Auto-complete: called on every relevant API request to tick over due transfers
-# ---------------------------------------------------------------------------
-
-def _maybe_auto_complete(db: Database) -> None:
-    """Auto-complete IN_TRANSIT transfers whose lead_days have elapsed."""
+def complete_due_transfers(db: Optional[Database] = None) -> int:
+    """Complete due IN_TRANSIT allocations (and parent transfer when all done)."""
+    database = db if db is not None else get_db()
     now = _now()
-    # Mongo/PyMongo may return stored BSON dates as timezone-naive UTC.
-    # Normalize both sides to naive UTC to avoid aware/naive comparison errors.
     now_naive = now.replace(tzinfo=None)
-    due = list(
-        db.stock_transfers.find(
+    candidates = list(
+        database.stock_transfers.find(
+            {
+                "allocations": {
+                    "$elemMatch": {
+                        "status": ALLOC_IN_TRANSIT,
+                        "dispatched_at": {"$exists": True},
+                        "lead_days": {"$exists": True},
+                    }
+                }
+            }
+        )
+    )
+    # Legacy docs: top-level IN_TRANSIT without allocations array entries.
+    legacy = list(
+        database.stock_transfers.find(
             {
                 "status": STATUS_IN_TRANSIT,
                 "dispatched_at": {"$exists": True},
                 "lead_days": {"$exists": True},
+                "$or": [{"allocations": {"$exists": False}}, {"allocations": []}],
             }
         )
     )
-    for doc in due:
+
+    completed_transfers = 0
+    for doc in candidates:
+        changed = False
+        allocs = list(doc.get("allocations", []))
+        for i, alloc in enumerate(allocs):
+            if alloc.get("status") != ALLOC_IN_TRANSIT:
+                continue
+            dispatched = alloc.get("dispatched_at")
+            if dispatched is None or alloc.get("lead_days") is None:
+                continue
+            if dispatched.tzinfo is not None:
+                dispatched = dispatched.replace(tzinfo=None)
+            if now_naive < dispatched + timedelta(days=int(alloc["lead_days"])):
+                continue
+            allocs[i] = {**alloc, "status": ALLOC_COMPLETED, "completed_at": now}
+            changed = True
+            if alloc.get("po_id") is not None:
+                database.purchase_orders.update_one(
+                    {"_id": alloc["po_id"]},
+                    {"$set": {"status": "RECEIVED"}},
+                )
+                _append_event(database, doc["_id"], "System", "PO_RECEIVED")
+            _append_event(database, doc["_id"], "System", "RECEIVED")
+        if changed:
+            database.stock_transfers.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"allocations": allocs}},
+            )
+            refreshed = database.stock_transfers.find_one({"_id": doc["_id"]})
+            before = doc.get("status")
+            if refreshed is not None:
+                _set_derived_status(database, doc["_id"], refreshed)
+                after = database.stock_transfers.find_one({"_id": doc["_id"]})
+                if after and after.get("status") == STATUS_COMPLETED and before != STATUS_COMPLETED:
+                    completed_transfers += 1
+
+    for doc in legacy:
         dispatched = doc["dispatched_at"]
         if dispatched.tzinfo is not None:
             dispatched = dispatched.replace(tzinfo=None)
-        lead = int(doc["lead_days"])
-        if now_naive >= dispatched + timedelta(days=lead):
-            db.stock_transfers.update_one(
-                {"_id": doc["_id"]},
-                {"$set": {"status": STATUS_COMPLETED, "completed_at": now}},
+        if now_naive < dispatched + timedelta(days=int(doc["lead_days"])):
+            continue
+        database.stock_transfers.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"status": STATUS_COMPLETED, "completed_at": now, "remaining_qty": 0}},
+        )
+        _append_event(database, doc["_id"], "System", "RECEIVED")
+        if doc.get("po_id") is not None:
+            database.purchase_orders.update_one(
+                {"_id": doc["po_id"]},
+                {"$set": {"status": "RECEIVED"}},
             )
-            _append_event(db, doc["_id"], "system", "COMPLETED")
-            if doc.get("po_id") is not None:
-                db.purchase_orders.update_one(
-                    {"_id": doc["po_id"]},
-                    {"$set": {"status": "RECEIVED"}},
-                )
-                _append_event(db, doc["_id"], "system", "PO_RECEIVED")
+            _append_event(database, doc["_id"], "System", "PO_RECEIVED")
+        completed_transfers += 1
 
+    return completed_transfers
 
-# ---------------------------------------------------------------------------
-# Create
-# ---------------------------------------------------------------------------
 
 def create_transfer(
     requester_store_id: str,
@@ -332,15 +494,21 @@ def create_transfer(
 
     requester_oid = parse_object_id(requester_store_id, "store_id")
     product_oid = parse_object_id(product_id, "product_id")
-    if database.stock_transfers.find_one(
-        {"requester_store_id": requester_oid, "product_id": product_oid, "status": STATUS_OPEN}
-    ):
+    existing = database.stock_transfers.find_one(
+        {
+            "requester_store_id": requester_oid,
+            "product_id": product_oid,
+            "status": {"$in": list(ACTIVE_FULFILLMENT_STATUSES)},
+        }
+    )
+    if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An open transfer request already exists for this product",
+            detail="Stock is already requested or in transit for this product",
         )
 
     now = _now()
+    qty = int(options.requested_qty)
     invited = [
         {"store_id": parse_object_id(sid, "store_id"), "status": INVITE_PENDING}
         for sid in unique_ids
@@ -349,21 +517,19 @@ def create_transfer(
         {
             "product_id": product_oid,
             "requester_store_id": requester_oid,
-            "qty": options.requested_qty,
+            "qty": qty,
+            "remaining_qty": qty,
             "status": STATUS_OPEN,
             "created_at": now,
             "invited": invited,
-            "events": [{"at": now, "actor": "system", "action": "REQUESTED"}],
+            "allocations": [],
+            "events": [{"at": now, "actor": "System", "action": "REQUESTED"}],
         }
     )
     names = _store_names(database)
     doc = database.stock_transfers.find_one({"_id": result.inserted_id})
     return _build_outgoing(doc, names, options.sku, options.product_name)
 
-
-# ---------------------------------------------------------------------------
-# Respond (Accept / Decline / Check stock / Clear check)
-# ---------------------------------------------------------------------------
 
 def respond_to_transfer(
     transfer_id: str,
@@ -372,7 +538,6 @@ def respond_to_transfer(
     db: Optional[Database] = None,
 ) -> IncomingTransfer:
     database = db if db is not None else get_db()
-    _maybe_auto_complete(database)
 
     try:
         transfer_oid = ObjectId(transfer_id)
@@ -386,7 +551,7 @@ def respond_to_transfer(
     if doc["status"] != STATUS_OPEN:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This transfer request is no longer open",
+            detail="This transfer request is no longer open for responses",
         )
 
     my_idx = next(
@@ -416,8 +581,12 @@ def respond_to_transfer(
         )
         _append_event(database, transfer_oid, actor_name, "DECLINED")
         doc = database.stock_transfers.find_one({"_id": transfer_oid})
-        if doc is not None and all(inv["status"] == INVITE_DECLINED for inv in doc["invited"]):
-            _auto_escalate_to_supplier(database, transfer_oid, doc)
+        if doc is not None:
+            open_left = any(
+                inv["status"] in (INVITE_PENDING, INVITE_CHECKING) for inv in doc["invited"]
+            )
+            if not open_left:
+                _auto_escalate_remaining(database, transfer_oid, doc)
 
     elif action == "CHECK_STOCK":
         if current_status != INVITE_PENDING:
@@ -467,29 +636,68 @@ def respond_to_transfer(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Another store is checking stock — please wait before accepting",
             )
+
+        remaining = _remaining(doc)
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Nothing remaining to fulfil on this request",
+            )
+        accept_qty = int(body.qty) if body.qty is not None else remaining
+        if accept_qty < 1 or accept_qty > remaining:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Accept qty must be between 1 and {remaining}",
+            )
+
         now = _now()
         lead_days = _get_lead_days(database, responder_oid, doc["product_id"])
-        updates: Dict[str, Any] = {
-            f"invited.{my_idx}.status": INVITE_ACCEPTED,
-            "status": STATUS_FULFILLED,
-            "accepted_store_id": responder_oid,
+        new_remaining = remaining - accept_qty
+        allocation = {
+            "allocation_id": ObjectId(),
+            "source": ALLOC_SOURCE_STORE,
+            "store_id": responder_oid,
+            "qty": accept_qty,
+            "status": ALLOC_FULFILLED,
             "accepted_at": now,
             "lead_days": lead_days,
         }
-        for i, inv in enumerate(doc["invited"]):
-            if i != my_idx and inv["status"] == INVITE_PENDING:
-                updates[f"invited.{i}.status"] = INVITE_PASSED
-        database.stock_transfers.update_one({"_id": transfer_oid}, {"$set": updates})
-        _append_event(database, transfer_oid, actor_name, "ACCEPTED")
+        updates: Dict[str, Any] = {
+            f"invited.{my_idx}.status": INVITE_ACCEPTED,
+            f"invited.{my_idx}.accepted_qty": accept_qty,
+            "remaining_qty": new_remaining,
+            "accepted_at": doc.get("accepted_at") or now,
+            "accepted_store_id": responder_oid,
+            "lead_days": lead_days,
+        }
+        if new_remaining == 0:
+            for i, inv in enumerate(doc["invited"]):
+                if i != my_idx and inv["status"] in (INVITE_PENDING, INVITE_CHECKING):
+                    updates[f"invited.{i}.status"] = INVITE_PASSED
+
+        database.stock_transfers.update_one(
+            {"_id": transfer_oid},
+            {"$set": updates, "$push": {"allocations": allocation}},
+        )
+        event_action = "PARTIAL_ACCEPTED" if new_remaining > 0 else "ACCEPTED"
+        _append_event(database, transfer_oid, actor_name, event_action)
+        if new_remaining > 0:
+            _append_event(database, transfer_oid, "System", "REMAINING_UPDATED")
+
+        doc = database.stock_transfers.find_one({"_id": transfer_oid})
+        if doc is not None:
+            open_left = any(
+                inv["status"] in (INVITE_PENDING, INVITE_CHECKING) for inv in doc["invited"]
+            )
+            if new_remaining > 0 and not open_left:
+                _auto_escalate_remaining(database, transfer_oid, doc)
+            else:
+                _set_derived_status(database, transfer_oid, doc)
 
     doc = database.stock_transfers.find_one({"_id": transfer_oid})
     sku, product_name = _product_label(database, doc["product_id"])
     return _build_incoming(doc, responder_oid, names, sku, product_name)
 
-
-# ---------------------------------------------------------------------------
-# Dispatch (donor marks stock sent)
-# ---------------------------------------------------------------------------
 
 def dispatch_transfer(
     transfer_id: str,
@@ -497,7 +705,6 @@ def dispatch_transfer(
     db: Optional[Database] = None,
 ) -> OutgoingTransfer:
     database = db if db is not None else get_db()
-    _maybe_auto_complete(database)
 
     try:
         transfer_oid = ObjectId(transfer_id)
@@ -508,41 +715,53 @@ def dispatch_transfer(
     doc = database.stock_transfers.find_one({"_id": transfer_oid})
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
-    if doc["status"] != STATUS_FULFILLED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Transfer must be FULFILLED to dispatch, currently {doc['status']}",
-        )
-    if doc.get("accepted_store_id") != dispatcher_oid:
+
+    alloc = _find_store_allocation(doc, dispatcher_oid)
+    if alloc is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the accepting store can mark as dispatched",
+            detail="Only a store with an accepted allocation can dispatch",
+        )
+    if alloc["status"] != ALLOC_FULFILLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Allocation must be FULFILLED to dispatch, currently {alloc['status']}",
         )
 
     now = _now()
+    allocs = []
+    for item in doc.get("allocations", []):
+        if item.get("allocation_id") == alloc["allocation_id"]:
+            allocs.append(
+                {
+                    **item,
+                    "status": ALLOC_IN_TRANSIT,
+                    "dispatched_at": now,
+                }
+            )
+        else:
+            allocs.append(item)
+
     database.stock_transfers.update_one(
         {"_id": transfer_oid},
-        {"$set": {"status": STATUS_IN_TRANSIT, "dispatched_at": now}},
+        {"$set": {"allocations": allocs, "dispatched_at": doc.get("dispatched_at") or now}},
     )
     names = _store_names(database)
     actor_name = names.get(dispatcher_oid, dispatcher_store_id)
     _append_event(database, transfer_oid, actor_name, "DISPATCHED")
 
     doc = database.stock_transfers.find_one({"_id": transfer_oid})
+    _set_derived_status(database, transfer_oid, doc)
+    doc = database.stock_transfers.find_one({"_id": transfer_oid})
     sku, product_name = _product_label(database, doc["product_id"])
     return _build_outgoing(doc, names, sku, product_name)
 
-
-# ---------------------------------------------------------------------------
-# List
-# ---------------------------------------------------------------------------
 
 def list_my_transfers(
     store_id: str,
     db: Optional[Database] = None,
 ) -> MyTransfersResponse:
     database = db if db is not None else get_db()
-    _maybe_auto_complete(database)
 
     store_oid = parse_object_id(store_id, "store_id")
     names = _store_names(database)
@@ -572,7 +791,6 @@ def get_transfer_detail(
     db: Optional[Database] = None,
 ) -> TransferDetail:
     database = db if db is not None else get_db()
-    _maybe_auto_complete(database)
 
     try:
         transfer_oid = ObjectId(transfer_id)

@@ -12,12 +12,12 @@ import {
   respondToTransfer,
 } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
-import InventoryTable from "./sections/InventoryTable.tsx";
+import InventoryTable, { buildActiveFulfillments } from "./sections/InventoryTable.tsx";
 import LoadError from "./sections/LoadError.tsx";
 import LoadingState from "./sections/LoadingState.tsx";
 import LoginForm from "./sections/LoginForm.tsx";
 import RequestOptionsModal from "./sections/RequestOptionsModal.tsx";
-import StoreNav, { type HomeView } from "./sections/StoreNav.tsx";
+import StoreNav, { pathToView, VIEW_PATHS, type HomeView } from "./sections/StoreNav.tsx";
 import TransferTables from "./sections/TransferTables.tsx";
 import type {
   ForecastResponse,
@@ -29,7 +29,27 @@ import type {
   TransferDetail,
 } from "./types.ts";
 
+function readRoute(): { view: HomeView; transferId: string | null } {
+  const view = pathToView(window.location.pathname);
+  const transferId = new URLSearchParams(window.location.search).get("id");
+  return { view, transferId };
+}
+
+function writeRoute(view: HomeView, transferId: string | null = null, replace: boolean = false) {
+  const path = VIEW_PATHS[view];
+  const next = transferId ? `${path}?id=${encodeURIComponent(transferId)}` : path;
+  if (`${window.location.pathname}${window.location.search}` === next) {
+    return;
+  }
+  if (replace) {
+    window.history.replaceState({}, "", next);
+  } else {
+    window.history.pushState({}, "", next);
+  }
+}
+
 export default function App() {
+  const initial = readRoute();
   const [session, setSession] = useState<MeResponse | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(getToken()));
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -45,12 +65,12 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [transfers, setTransfers] = useState<MyTransfersResponse | null>(null);
-  const [view, setView] = useState<HomeView>("inventory");
+  const [view, setView] = useState<HomeView>(initial.view);
   const [responding, setResponding] = useState<string | null>(null);
   const [respondError, setRespondError] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState<string | null>(null);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
-  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(initial.transferId);
   const [transferDetail, setTransferDetail] = useState<TransferDetail | null>(null);
   const [loadingTransferDetail, setLoadingTransferDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -59,6 +79,40 @@ export default function App() {
     setError(null);
     setReloadKey((key) => key + 1);
   }, []);
+
+  const loadTransferDetail = useCallback((transferId: string) => {
+    setSelectedTransferId(transferId);
+    setDetailError(null);
+    setLoadingTransferDetail(true);
+    fetchTransferDetail(transferId)
+      .then(setTransferDetail)
+      .catch((err: Error) => {
+        setDetailError(err.message);
+        setSelectedTransferId(null);
+        setTransferDetail(null);
+        // Drop stale ?id= so the tab list remains usable.
+        writeRoute(pathToView(window.location.pathname), null, true);
+      })
+      .finally(() => setLoadingTransferDetail(false));
+  }, []);
+
+  const clearTransferDetail = useCallback(() => {
+    setSelectedTransferId(null);
+    setTransferDetail(null);
+    setDetailError(null);
+  }, []);
+
+  const applyRoute = useCallback(
+    (nextView: HomeView, transferId: string | null) => {
+      setView(nextView);
+      if (transferId) {
+        loadTransferDetail(transferId);
+      } else {
+        clearTransferDetail();
+      }
+    },
+    [clearTransferDetail, loadTransferDetail],
+  );
 
   useEffect(() => {
     const token = getToken();
@@ -103,13 +157,31 @@ export default function App() {
       .finally(() => setLoadingInventory(false));
   }, [session, reloadKey]);
 
+  useEffect(() => {
+    if (!session) return;
+    const { view: routeView, transferId } = readRoute();
+    applyRoute(routeView, transferId);
+  }, [session, applyRoute]);
+
+  useEffect(() => {
+    if (!session) return;
+    const onPop = () => {
+      const { view: routeView, transferId } = readRoute();
+      applyRoute(routeView, transferId);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [session, applyRoute]);
+
   function handleLogin(username: string, password: string) {
     setLoginError(null);
     setSubmitting(true);
     login(username, password)
       .then((payload) => {
         setToken(payload.token);
+        writeRoute("inventory");
         setView("inventory");
+        clearTransferDetail();
         setSession({
           store_id: payload.store_id,
           store_name: payload.store_name,
@@ -131,7 +203,9 @@ export default function App() {
     setOptionsError(null);
     setSendError(null);
     setTransfers(null);
+    writeRoute("inventory");
     setView("inventory");
+    clearTransferDetail();
   }
 
   function handleRequestProduct(productId: string) {
@@ -145,10 +219,10 @@ export default function App() {
       .finally(() => setLoadingOptions(false));
   }
 
-  function handleRespond(transferId: string, action: RespondAction) {
+  function handleRespond(transferId: string, action: RespondAction, qty?: number) {
     setRespondError(null);
     setResponding(transferId);
-    respondToTransfer(transferId, action)
+    respondToTransfer(transferId, action, qty)
       .then(() => setReloadKey((key) => key + 1))
       .catch((err: Error) => setRespondError(err.message))
       .finally(() => setResponding(null));
@@ -172,69 +246,35 @@ export default function App() {
     createTransfer(options.product_id, storeIds)
       .then(() => {
         setOptions(null);
+        writeRoute("transferred");
         setView("transferred");
+        clearTransferDetail();
         setReloadKey((key) => key + 1);
       })
       .catch((err: Error) => setSendError(err.message))
       .finally(() => setSending(false));
   }
 
-  function getTransferIdFromPath(): string | null {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    if (parts.length >= 2 && parts[0] === "transfers") return parts[1];
-    return null;
+  function handleOpenTransfer(transferId: string) {
+    writeRoute(view === "inventory" ? "transferred" : view, transferId);
+    loadTransferDetail(transferId);
   }
 
-  function setTransferRoute(transferId: string | null) {
-    const nextPath = transferId ? `/transfers/${transferId}` : "/";
-    window.history.pushState({}, "", nextPath);
-  }
-
-  function handleOpenTransfer(transferId: string, syncUrl: boolean = true) {
-    if (syncUrl) setTransferRoute(transferId);
-    setSelectedTransferId(transferId);
-    setDetailError(null);
-    setLoadingTransferDetail(true);
-    fetchTransferDetail(transferId)
-      .then(setTransferDetail)
-      .catch((err: Error) => setDetailError(err.message))
-      .finally(() => setLoadingTransferDetail(false));
-  }
-
-  function handleCloseTransferDetail(syncUrl: boolean = true) {
-    if (syncUrl) setTransferRoute(null);
-    setSelectedTransferId(null);
-    setTransferDetail(null);
-    setDetailError(null);
+  function handleCloseTransferDetail() {
+    writeRoute(view);
+    clearTransferDetail();
   }
 
   function handleChangeView(nextView: HomeView) {
-    handleCloseTransferDetail();
+    writeRoute(nextView);
     setView(nextView);
+    clearTransferDetail();
   }
 
-  useEffect(() => {
-    if (!session) return;
-    const transferId = getTransferIdFromPath();
-    if (transferId) {
-      if (transferId !== selectedTransferId) handleOpenTransfer(transferId, false);
-    } else if (selectedTransferId) {
-      handleCloseTransferDetail(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
-
-  useEffect(() => {
-    if (!session) return;
-    const onPop = () => {
-      const transferId = getTransferIdFromPath();
-      if (transferId) handleOpenTransfer(transferId, false);
-      else handleCloseTransferDetail(false);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, selectedTransferId]);
+  function handleTrackShipment(transferId: string) {
+    writeRoute("in_transit", transferId);
+    applyRoute("in_transit", transferId);
+  }
 
   if (checkingSession) {
     return (
@@ -303,9 +343,7 @@ export default function App() {
     const incoming = transfers?.incoming ?? [];
     const outgoing = transfers?.outgoing ?? [];
     const receivedCount = incoming.filter((r) => ["PENDING", "CHECKING"].includes(r.my_status)).length;
-    const acceptedCount = incoming.filter(
-      (r) => r.my_status === "ACCEPTED" && ["FULFILLED", "IN_TRANSIT"].includes(r.status),
-    ).length;
+    const acceptedCount = incoming.filter((r) => r.my_status === "ACCEPTED").length;
     const inTransitCount =
       outgoing.filter((r) => r.status === "IN_TRANSIT").length +
       incoming.filter((r) => r.status === "IN_TRANSIT" && r.my_status === "ACCEPTED").length;
@@ -347,38 +385,13 @@ export default function App() {
       <InventoryTable
         inventory={inventory}
         forecasts={forecasts}
+        activeByProduct={buildActiveFulfillments(outgoing)}
         onRequestProduct={handleRequestProduct}
+        onTrackShipment={handleTrackShipment}
       />
     );
-    if (selectedTransferId) {
-      const errorBanner =
-        detailError || respondError || dispatchError ? (
-          <p className="error" style={{ margin: "0 0 8px" }}>
-            {detailError ?? respondError ?? dispatchError}
-          </p>
-        ) : null;
-      main = (
-        <>
-          {errorBanner}
-          <TransferTables
-            mode={view}
-            outgoing={outgoing}
-            incoming={incoming}
-            myStoreId={current.store_id}
-            responding={responding}
-            dispatching={dispatching}
-            onRespond={handleRespond}
-            onDispatch={handleDispatch}
-            onOpenTransfer={handleOpenTransfer}
-            selectedTransferId={selectedTransferId}
-            transferDetail={transferDetail}
-            loadingTransferDetail={loadingTransferDetail}
-            onCloseTransferDetail={handleCloseTransferDetail}
-          />
-        </>
-      );
-    }
-    if (view !== "inventory") {
+
+    if (view !== "inventory" || selectedTransferId) {
       const errorBanner =
         respondError || dispatchError || detailError ? (
           <p className="error" style={{ margin: "0 0 8px" }}>
@@ -389,7 +402,7 @@ export default function App() {
         <>
           {errorBanner}
           <TransferTables
-            mode={view}
+            mode={view === "inventory" ? "transferred" : view}
             outgoing={outgoing}
             incoming={incoming}
             myStoreId={current.store_id}

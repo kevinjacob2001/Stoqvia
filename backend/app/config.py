@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     forecast_model: str = Field(default="lightgbm", alias="FORECAST_MODEL")
     auth_secret: str = Field(default="stoqvia-dev-auth-secret", alias="AUTH_SECRET")
     auth_token_hours: int = Field(default=12, alias="AUTH_TOKEN_HOURS")
+    # Seconds between due-transfer completion sweeps. 0 disables the background job.
+    auto_complete_interval_seconds: int = Field(default=30, alias="AUTO_COMPLETE_INTERVAL_SECONDS")
 
 
 @lru_cache

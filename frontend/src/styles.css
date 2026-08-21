@@ -202,6 +202,51 @@ td {
   color: #17663a;
 }
 
+.muted-label {
+  color: #5b6b7c;
+  font-size: 0.8rem;
+}
+
+.shipment-affordance {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.shipment-truck {
+  color: #1f6feb;
+}
+
+.shipment-popover {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 5;
+  min-width: 180px;
+  padding: 10px;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(16, 32, 51, 0.12);
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shipment-popover strong {
+  font-size: 0.82rem;
+}
+
+.shipment-popover span {
+  color: #5b6b7c;
+  font-size: 0.78rem;
+}
+
+.shipment-affordance:hover .shipment-popover,
+.shipment-affordance:focus-within .shipment-popover {
+  display: flex;
+}
+
 .error {
   color: #b42318;
 }

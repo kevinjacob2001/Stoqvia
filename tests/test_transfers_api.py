@@ -103,12 +103,47 @@ def test_cannot_broadcast_twice_while_open(client: TestClient) -> None:
         json={"product_id": product_id, "donor_store_ids": [marion_id]},
     )
     assert first.status_code == 200
+    assert first.json()["product_id"] == product_id
     second = client.post(
         "/api/v1/transfers",
         headers=_auth(token),
         json={"product_id": product_id, "donor_store_ids": [marion_id]},
     )
     assert second.status_code == 409
+    assert "already requested or in transit" in second.json()["detail"]
+
+
+def test_cannot_request_again_while_in_transit(client: TestClient) -> None:
+    product_id, marion_id, _, _ = _drill_and_stores()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    created = client.post(
+        "/api/v1/transfers",
+        headers=_auth(cbd["token"]),
+        json={"product_id": product_id, "donor_store_ids": [marion_id]},
+    )
+    assert created.status_code == 200
+    transfer_id = created.json()["transfer_id"]
+
+    marion = _login(client, "admin.marion", "marion123")
+    accept = client.post(
+        f"/api/v1/transfers/{transfer_id}/respond",
+        headers=_auth(marion["token"]),
+        json={"action": "ACCEPT"},
+    )
+    assert accept.status_code == 200
+    dispatch = client.post(
+        f"/api/v1/transfers/{transfer_id}/dispatch",
+        headers=_auth(marion["token"]),
+    )
+    assert dispatch.status_code == 200
+    assert dispatch.json()["status"] == "IN_TRANSIT"
+
+    again = client.post(
+        "/api/v1/transfers",
+        headers=_auth(cbd["token"]),
+        json={"product_id": product_id, "donor_store_ids": [marion_id]},
+    )
+    assert again.status_code == 409
 
 
 def test_create_transfer_requires_auth(client: TestClient) -> None:

@@ -2,6 +2,33 @@ import type { MeResponse } from "../types.ts";
 
 export type HomeView = "inventory" | "received" | "accepted" | "in_transit" | "declined" | "transferred";
 
+export const VIEW_PATHS: Record<HomeView, string> = {
+  inventory: "/",
+  received: "/received",
+  accepted: "/accepted",
+  in_transit: "/in-transit",
+  declined: "/declined",
+  transferred: "/transfer",
+};
+
+export function pathToView(pathname: string): HomeView {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  switch (path) {
+    case "/received":
+      return "received";
+    case "/accepted":
+      return "accepted";
+    case "/in-transit":
+      return "in_transit";
+    case "/declined":
+      return "declined";
+    case "/transfer":
+      return "transferred";
+    default:
+      return "inventory";
+  }
+}
+
 type StoreNavProps = {
   session: MeResponse;
   view: HomeView;

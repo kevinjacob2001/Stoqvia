@@ -72,6 +72,21 @@ export type InviteStatus = {
   store_id: string;
   store_name: string;
   status: string;
+  accepted_qty?: number | null;
+};
+
+export type TransferAllocation = {
+  allocation_id: string;
+  source: string;
+  store_id: string | null;
+  store_name: string | null;
+  qty: number;
+  status: string;
+  accepted_at: string | null;
+  dispatched_at: string | null;
+  completed_at: string | null;
+  lead_days: number | null;
+  po_id: string | null;
 };
 
 export type TransferEvent = {
@@ -82,11 +97,14 @@ export type TransferEvent = {
 
 export type OutgoingTransfer = {
   transfer_id: string;
+  product_id: string;
   sku: string;
   product_name: string;
   qty: number;
+  remaining_qty: number;
   status: string;
   invited: InviteStatus[];
+  allocations: TransferAllocation[];
   created_at: string | null;
   accepted_at: string | null;
   dispatched_at: string | null;
@@ -101,9 +119,13 @@ export type IncomingTransfer = {
   sku: string;
   product_name: string;
   qty: number;
+  remaining_qty: number;
   requester_store_name: string;
   my_status: string;
+  my_accepted_qty: number | null;
+  my_allocation: TransferAllocation | null;
   all_invited: InviteStatus[];
+  allocations: TransferAllocation[];
   status: string;
   created_at: string | null;
   accepted_at: string | null;
@@ -131,11 +153,13 @@ export type TransferDetail = {
   sku: string;
   product_name: string;
   qty: number;
+  remaining_qty: number;
   status: string;
   requester_store_name: string;
   accepted_store_name: string | null;
   my_status: string | null;
   invited: InviteStatus[];
+  allocations: TransferAllocation[];
   created_at: string | null;
   accepted_at: string | null;
   dispatched_at: string | null;
