@@ -74,13 +74,6 @@ def _respond(client, token, transfer_id, action):
     )
 
 
-def _contact_supplier(client, token: str, transfer_id: str):
-    return client.post(
-        f"/api/v1/transfers/{transfer_id}/contact-supplier",
-        headers=_auth(token),
-    )
-
-
 # --- Accept ---
 
 def test_accept_closes_request_and_passes_others(client: TestClient) -> None:
@@ -204,7 +197,7 @@ def test_all_invited_visible_on_incoming(client: TestClient) -> None:
     assert "Mile End" in invited_names
 
 
-def test_all_declines_mark_request_declined(client: TestClient) -> None:
+def test_all_declines_auto_create_po_and_move_in_transit(client: TestClient) -> None:
     product_id, marion_id, mile_id = _drill_ids()
     cbd = _login(client, "admin.cbd", "cbd123")
     tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
@@ -216,12 +209,20 @@ def test_all_declines_mark_request_declined(client: TestClient) -> None:
 
     transfers = client.get("/api/v1/transfers", headers=_auth(cbd["token"]))
     assert transfers.status_code == 200
-    declined = transfers.json()["outgoing"][0]
-    assert declined["status"] == "DECLINED"
-    assert any(event["action"] == "ALL_DECLINED" for event in declined["events"])
+    row = transfers.json()["outgoing"][0]
+    assert row["status"] == "IN_TRANSIT"
+    assert any(event["action"] == "ALL_DECLINED" for event in row["events"])
+    assert any(event["action"] == "SUPPLIER_ESCALATED" for event in row["events"])
+    assert any(event["action"] == "PO_CREATED" for event in row["events"])
+
+    detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    assert detail["status"] == "IN_TRANSIT"
+    assert detail["purchase_order"] is not None
+    assert detail["purchase_order"]["status"] == "OPEN"
+    assert detail["accepted_store_name"] == detail["purchase_order"]["supplier_name"]
 
 
-def test_contact_supplier_moves_request_in_transit_then_completed(client: TestClient) -> None:
+def test_all_declines_auto_po_then_completed(client: TestClient) -> None:
     product_id, marion_id, mile_id = _drill_ids()
     cbd = _login(client, "admin.cbd", "cbd123")
     tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
@@ -231,25 +232,13 @@ def test_contact_supplier_moves_request_in_transit_then_completed(client: TestCl
     _respond(client, marion["token"], tid, "DECLINE")
     _respond(client, mile["token"], tid, "DECLINE")
 
-    # Supplier contact by the requester
-    r = _contact_supplier(client, cbd["token"], tid)
-    assert r.status_code == 200
-    payload = r.json()
-    assert payload["status"] == "IN_TRANSIT"
-    assert payload["purchase_order"] is not None
-    assert payload["purchase_order"]["status"] == "OPEN"
-    assert payload["purchase_order"]["po_id"]
-    assert payload["purchase_order"]["supplier_name"]
-    assert payload["accepted_store_name"] == payload["purchase_order"]["supplier_name"]
-    assert any(ev["action"] == "SUPPLIER_CONTACTED" for ev in payload["events"])
-    assert any(ev["action"] == "PO_CREATED" for ev in payload["events"])
-
-    # Force completion by backdating dispatched_at to now - lead_days
     db = get_db()
     from bson import ObjectId
 
     doc = db.stock_transfers.find_one({"_id": ObjectId(tid)})
     assert doc is not None
+    assert doc["status"] == "IN_TRANSIT"
+    assert doc.get("po_id") is not None
     lead_days = int(doc["lead_days"])
     po_id = doc["po_id"]
 
