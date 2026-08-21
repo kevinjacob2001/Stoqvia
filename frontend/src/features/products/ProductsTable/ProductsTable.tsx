@@ -1,5 +1,5 @@
 import "./ProductsTable.css";
-import { Button, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
+import { Button, IdentityCell, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
 import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
 import { stockToneFromRisk } from "../../../lib/productDisplay.ts";
 import type { ForecastResponse, InventoryItem } from "../../../types.ts";
@@ -28,7 +28,7 @@ export default function ProductsTable({
   return (
     <>
       <div className="table-wrap">
-        <table className="products-table">
+        <table className="data-table products-table">
           <thead>
             <tr>
               <th>Product</th>
@@ -56,13 +56,11 @@ export default function ProductsTable({
                   onClick={() => onSelect(item.product_id)}
                 >
                   <td>
-                    <div className="product-cell">
-                      <ProductThumb name={item.product_name} />
-                      <div>
-                        <strong>{item.product_name}</strong>
-                        <small>SKU {item.sku}</small>
-                      </div>
-                    </div>
+                    <IdentityCell
+                      title={item.product_name}
+                      subtitle={`SKU ${item.sku}`}
+                      leading={<ProductThumb name={item.product_name} />}
+                    />
                   </td>
                   <td>
                     <span className={`stock-pill ${tone.className}`}>

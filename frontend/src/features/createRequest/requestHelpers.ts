@@ -1,8 +1,9 @@
+import { dayCountLabel } from "../../lib/datetime.ts";
 import type { DonorOption } from "../../types.ts";
 
 export function leadTimeLabel(days: number): string {
   if (days <= 1) return "Same day";
-  return `${days} days`;
+  return dayCountLabel(days);
 }
 
 export function forecastImpactLabel(store: DonorOption, needQty: number): {

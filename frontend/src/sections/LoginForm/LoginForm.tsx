@@ -1,4 +1,5 @@
 import "./LoginForm.css";
+import { Button } from "../../components/ui/index.ts";
 type LoginFormProps = {
   error: string | null;
   submitting: boolean;
@@ -25,9 +26,9 @@ export default function LoginForm({ error, submitting, onSubmit }: LoginFormProp
         <input name="password" type="password" autoComplete="current-password" required />
       </label>
       {error ? <p className="error">{error}</p> : null}
-      <button className="retry-button" disabled={submitting} type="submit">
+      <Button variant="primary" disabled={submitting} type="submit">
         {submitting ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

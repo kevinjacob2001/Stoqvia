@@ -28,14 +28,6 @@
   padding: 12px 8px 8px;
 }
 
-.drawer-thumb {
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 12px;
-  font-size: 1.2rem;
-  border-radius: 16px;
-}
-
 .drawer-hero h2 {
   margin: 0 0 4px;
   font-size: 1.15rem;

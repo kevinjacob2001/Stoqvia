@@ -68,12 +68,16 @@ function SubLink({ item, current, onChangeView }: { item: NavLink; current: Home
 
 export default function SideNav({ session, view, counts, onChangeView, onLogout }: SideNavProps) {
   const requestsOpen =
-    view === "received" || view === "transferred" || view === "declined" || view === "create_request";
+    view === "requests" ||
+    view === "received" ||
+    view === "transferred" ||
+    view === "declined" ||
+    view === "create_request";
   const fulfillOpen = view === "accepted" || view === "in_transit";
 
   const requestLinks: NavLink[] = [
-    { view: "transferred", label: "Sent Requests", count: counts.outgoingCount },
-    { view: "received", label: "Received Requests", count: counts.receivedCount },
+    { view: "received", label: "Received", count: counts.receivedCount },
+    { view: "transferred", label: "Sent", count: counts.outgoingCount },
     { view: "declined", label: "Declined", count: counts.declinedCount },
   ];
   const fulfillLinks: NavLink[] = [
@@ -103,7 +107,7 @@ export default function SideNav({ session, view, counts, onChangeView, onLogout 
           label="Requests"
           icon={ICON_PATHS.requests}
           active={requestsOpen}
-          onClick={() => onChangeView("received")}
+          onClick={() => onChangeView("requests")}
         >
           {requestLinks.map((item) => (
             <SubLink key={item.view} item={item} current={view} onChangeView={onChangeView} />

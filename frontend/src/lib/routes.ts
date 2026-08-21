@@ -1,6 +1,7 @@
 export type HomeView =
   | "inventory"
   | "create_request"
+  | "requests"
   | "received"
   | "accepted"
   | "in_transit"
@@ -10,6 +11,7 @@ export type HomeView =
 export const VIEW_PATHS: Record<HomeView, string> = {
   inventory: "/",
   create_request: "/request",
+  requests: "/requests",
   received: "/received",
   accepted: "/accepted",
   in_transit: "/in-transit",
@@ -22,6 +24,8 @@ export function pathToView(pathname: string): HomeView {
   switch (path) {
     case "/request":
       return "create_request";
+    case "/requests":
+      return "requests";
     case "/received":
       return "received";
     case "/accepted":

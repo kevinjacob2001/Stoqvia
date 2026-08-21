@@ -12,15 +12,18 @@ import {
   respondToTransfer,
 } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
+import { Button } from "./components/ui/index.ts";
 import { CreateRequestPage } from "./features/createRequest/index.ts";
 import { ProductsPage } from "./features/products/index.ts";
+import { RequestsPage } from "./features/requests/index.ts";
 import { AppShell } from "./layout/index.ts";
 import { buildActiveFulfillments } from "./lib/fulfillments.ts";
 import { pathToView, readRoute, writeRoute, type HomeView } from "./lib/routes.ts";
+import { transferNavStats } from "./lib/transferCounts.ts";
 import LoadError from "./sections/LoadError/index.ts";
 import LoadingState from "./sections/LoadingState/index.ts";
 import LoginForm from "./sections/LoginForm/index.ts";
-import TransferTables from "./sections/TransferTables/index.ts";
+import TransferTables, { type TransferListMode } from "./sections/TransferTables/index.ts";
 import type {
   ForecastResponse,
   MeResponse,
@@ -247,8 +250,8 @@ export default function App() {
     createTransfer(options.product_id, storeIds)
       .then(() => {
         setOptions(null);
-        writeRoute("transferred");
-        setView("transferred");
+        writeRoute("requests");
+        setView("requests");
         clearTransferDetail();
         setReloadKey((key) => key + 1);
       })
@@ -257,7 +260,7 @@ export default function App() {
   }
 
   function handleOpenTransfer(transferId: string) {
-    const nextView = view === "inventory" || view === "create_request" ? "transferred" : view;
+    const nextView = view === "inventory" || view === "create_request" ? "requests" : view;
     writeRoute(nextView, { transferId });
     loadTransferDetail(transferId);
     setView(nextView);
@@ -309,12 +312,7 @@ export default function App() {
 
   const incoming = transfers?.incoming ?? [];
   const outgoing = transfers?.outgoing ?? [];
-  const receivedCount = incoming.filter((r) => ["PENDING", "CHECKING"].includes(r.my_status)).length;
-  const acceptedCount = incoming.filter((r) => r.my_status === "ACCEPTED").length;
-  const inTransitCount =
-    outgoing.filter((r) => r.status === "IN_TRANSIT").length +
-    incoming.filter((r) => r.status === "IN_TRANSIT" && r.my_status === "ACCEPTED").length;
-  const declinedCount = outgoing.filter((r) => r.status === "DECLINED").length;
+  const counts = transferNavStats(incoming, outgoing);
   const alertCount = Object.values(forecasts).filter((f) => f.risk === "HIGH").length;
 
   let mainContent: ReactNode;
@@ -337,9 +335,7 @@ export default function App() {
       mainContent = (
         <section className="panel">
           <p className="error">{optionsError}</p>
-          <button className="ghost-button" type="button" onClick={handleCancelCreateRequest}>
-            Back to Products
-          </button>
+          <Button onClick={handleCancelCreateRequest}>Back to Products</Button>
         </section>
       );
     } else if (options) {
@@ -359,9 +355,7 @@ export default function App() {
       mainContent = (
         <section className="panel">
           <p className="status">No request loaded.</p>
-          <button className="ghost-button" type="button" onClick={handleCancelCreateRequest}>
-            Back to Products
-          </button>
+          <Button onClick={handleCancelCreateRequest}>Back to Products</Button>
         </section>
       );
     }
@@ -372,27 +366,46 @@ export default function App() {
           {respondError ?? dispatchError ?? detailError}
         </p>
       ) : null;
-    const transferMode = view === "inventory" ? "transferred" : view;
-    mainContent = (
-      <>
-        {errorBanner}
-        <TransferTables
-          mode={transferMode}
-          outgoing={outgoing}
-          incoming={incoming}
-          myStoreId={session.store_id}
-          responding={responding}
-          dispatching={dispatching}
-          onRespond={handleRespond}
-          onDispatch={handleDispatch}
-          onOpenTransfer={handleOpenTransfer}
-          selectedTransferId={selectedTransferId}
-          transferDetail={transferDetail}
-          loadingTransferDetail={loadingTransferDetail}
-          onCloseTransferDetail={handleCloseTransferDetail}
-        />
-      </>
-    );
+    const isRequestsView = view === "requests" || view === "received" || view === "transferred";
+    const showingDetail = Boolean(selectedTransferId && (loadingTransferDetail || transferDetail || detailError));
+    if (isRequestsView && !showingDetail) {
+      const mode = view === "received" ? "received" : view === "transferred" ? "sent" : "overview";
+      mainContent = (
+        <>
+          {errorBanner}
+          <RequestsPage
+            mode={mode}
+            incoming={incoming}
+            outgoing={outgoing}
+            responding={responding}
+            onRespond={handleRespond}
+            onOpenTransfer={handleOpenTransfer}
+            onViewAllReceived={() => handleChangeView("received")}
+            onViewAllSent={() => handleChangeView("transferred")}
+          />
+        </>
+      );
+    } else {
+      const listMode: TransferListMode =
+        view === "accepted" || view === "in_transit" || view === "declined" ? view : "accepted";
+      mainContent = (
+        <>
+          {errorBanner}
+          <TransferTables
+            mode={listMode}
+            outgoing={outgoing}
+            incoming={incoming}
+            dispatching={dispatching}
+            onDispatch={handleDispatch}
+            onOpenTransfer={handleOpenTransfer}
+            selectedTransferId={selectedTransferId}
+            transferDetail={transferDetail}
+            loadingTransferDetail={loadingTransferDetail}
+            onCloseTransferDetail={handleCloseTransferDetail}
+          />
+        </>
+      );
+    }
   } else {
     mainContent = (
       <ProductsPage
@@ -410,11 +423,7 @@ export default function App() {
       session={session}
       view={view}
       counts={{
-        receivedCount,
-        acceptedCount,
-        inTransitCount,
-        declinedCount,
-        outgoingCount: outgoing.length,
+        ...counts,
         alertCount,
       }}
       onChangeView={handleChangeView}
