@@ -19,6 +19,23 @@ export const VIEW_PATHS: Record<HomeView, string> = {
   transferred: "/transfer",
 };
 
+/** Visible page title (h1) and browser tab label for each route. */
+export const VIEW_TITLES: Record<HomeView, string> = {
+  inventory: "Products",
+  create_request: "Create Request",
+  requests: "Requests",
+  received: "Received",
+  accepted: "Store Transfers",
+  in_transit: "In Transit",
+  declined: "Declined",
+  transferred: "Sent",
+};
+
+export function documentTitleFor(view: HomeView, opts?: { detail?: boolean }): string {
+  if (opts?.detail) return "Transfer details · Stoqvia";
+  return `${VIEW_TITLES[view]} · Stoqvia`;
+}
+
 export function pathToView(pathname: string): HomeView {
   const path = pathname.replace(/\/+$/, "") || "/";
   switch (path) {

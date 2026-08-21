@@ -3,6 +3,8 @@ export { default as RiskBadge } from "./RiskBadge/index.ts";
 export { default as MetricCard } from "./MetricCard/index.ts";
 export { default as SearchField } from "./SearchField/index.ts";
 export { default as PageHeader } from "./PageHeader/index.ts";
+export { default as Breadcrumbs } from "./Breadcrumbs/index.ts";
+export type { BreadcrumbItem } from "./Breadcrumbs/index.ts";
 export { default as Tabs } from "./Tabs/index.ts";
 export { default as ProductThumb } from "./ProductThumb/index.ts";
 export { default as Icon, ICON_PATHS } from "./Icon/index.ts";

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Button, ConfirmModal } from "../../components/ui/index.ts";
+import { Button, ConfirmModal, PageHeader } from "../../components/ui/index.ts";
 import { formatDateTime } from "../../lib/datetime.ts";
+import { VIEW_TITLES, type HomeView } from "../../lib/routes.ts";
 import { actorLabel, transferLabel } from "../../lib/transferLabels.ts";
 import type {
   IncomingTransfer,
@@ -14,6 +15,7 @@ export type TransferListMode = "accepted" | "in_transit" | "declined";
 
 type TransferTablesProps = {
   mode: TransferListMode;
+  view: HomeView;
   outgoing: OutgoingTransfer[];
   incoming: IncomingTransfer[];
   dispatching: string | null;
@@ -23,7 +25,63 @@ type TransferTablesProps = {
   transferDetail: TransferDetail | null;
   loadingTransferDetail: boolean;
   onCloseTransferDetail: () => void;
+  onNavigate?: (view: HomeView) => void;
 };
+
+const MODE_META: Record<
+  TransferListMode,
+  { title: string; subtitle: string; parent: string; parentView: HomeView }
+> = {
+  accepted: {
+    title: VIEW_TITLES.accepted,
+    subtitle: "Accepted requests ready for you to dispatch.",
+    parent: "Fulfillments",
+    parentView: "accepted",
+  },
+  in_transit: {
+    title: VIEW_TITLES.in_transit,
+    subtitle: "Shipments moving between stores.",
+    parent: "Fulfillments",
+    parentView: "accepted",
+  },
+  declined: {
+    title: VIEW_TITLES.declined,
+    subtitle: "Requests that were declined or closed without stock.",
+    parent: "Requests",
+    parentView: "requests",
+  },
+};
+
+type Crumb = { label: string; onClick?: () => void };
+
+function detailBreadcrumbs(
+  view: HomeView,
+  onClose: () => void,
+  onNavigate?: (view: HomeView) => void,
+): Crumb[] {
+  if (view === "accepted" || view === "in_transit") {
+    return [
+      { label: "Fulfillments", onClick: onNavigate ? () => onNavigate("accepted") : undefined },
+      { label: VIEW_TITLES[view], onClick: onClose },
+      { label: "Transfer details" },
+    ];
+  }
+  if (view === "declined") {
+    return [
+      { label: "Requests", onClick: onNavigate ? () => onNavigate("requests") : undefined },
+      { label: VIEW_TITLES.declined, onClick: onClose },
+      { label: "Transfer details" },
+    ];
+  }
+  const crumbs: Crumb[] = [
+    { label: "Requests", onClick: onNavigate ? () => onNavigate("requests") : undefined },
+  ];
+  if (view === "received" || view === "transferred") {
+    crumbs.push({ label: VIEW_TITLES[view], onClick: onClose });
+  }
+  crumbs.push({ label: "Transfer details" });
+  return crumbs;
+}
 
 const STAGES = ["Requested", "Accepted", "Dispatched", "Received"] as const;
 
@@ -121,16 +179,25 @@ function DetailPage({
   detail,
   loading,
   onClose,
+  view,
+  onNavigate,
 }: {
   detail: TransferDetail | null;
   loading: boolean;
   onClose: () => void;
+  view: HomeView;
+  onNavigate?: (view: HomeView) => void;
 }) {
   return (
-    <section className="panel">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+    <div>
+      <PageHeader
+        title="Transfer details"
+        subtitle={detail ? `${detail.product_name} · ${detail.qty} units` : "Loading transfer…"}
+        breadcrumbs={detailBreadcrumbs(view, onClose, onNavigate)}
+        meta={<Button onClick={onClose}>Back</Button>}
+      />
+      <section className="panel">
         <div>
-          <h2 style={{ marginBottom: 6 }}>Transfer details</h2>
           {detail ? (
             <>
               <div style={{ color: "#5b6b7c", fontSize: "0.84rem" }}>Transfer ID: {detail.transfer_id}</div>
@@ -154,112 +221,109 @@ function DetailPage({
             </>
           ) : null}
         </div>
-        <Button onClick={onClose}>
-          Back
-        </Button>
-      </div>
-      {loading ? <p className="status">Loading transfer details…</p> : null}
-      {detail ? (
-        <>
-          <ProgressBar
-            status={detail.status}
-            createdAt={detail.created_at}
-            acceptedAt={detail.accepted_at}
-            dispatchedAt={detail.dispatched_at}
-            completedAt={detail.completed_at}
-          />
+        {loading ? <p className="status">Loading transfer details…</p> : null}
+        {detail ? (
+          <>
+            <ProgressBar
+              status={detail.status}
+              createdAt={detail.created_at}
+              acceptedAt={detail.accepted_at}
+              dispatchedAt={detail.dispatched_at}
+              completedAt={detail.completed_at}
+            />
 
-          <div style={{ marginTop: 14 }}>
-            <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>
-              Status details
-            </p>
-
-            {detail.status === "OPEN" ? (
-              <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
-                Awaiting store responses. You can review the invited stores below and respond in the <strong>Received</strong> tab.
+            <div style={{ marginTop: 14 }}>
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>
+                Status details
               </p>
-            ) : null}
 
-            {detail.status === "FULFILLED" ? (
-              <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
-                Accepted by <strong>{detail.accepted_store_name ?? "a store"}</strong>. Dispatch is pending.
-              </p>
-            ) : null}
+              {detail.status === "OPEN" ? (
+                <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
+                  Awaiting store responses. You can review the invited stores below and respond in the <strong>Received</strong> tab.
+                </p>
+              ) : null}
 
-            {detail.status === "IN_TRANSIT" ? (
-              <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
-                In transit{detail.lead_days != null ? (
-                  <>
-                    {" "}
-                    — auto-completes in <strong>{detail.lead_days}</strong> day{detail.lead_days !== 1 ? "s" : ""}.
-                  </>
-                ) : null}
-              </p>
-            ) : null}
+              {detail.status === "FULFILLED" ? (
+                <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
+                  Accepted by <strong>{detail.accepted_store_name ?? "a store"}</strong>. Dispatch is pending.
+                </p>
+              ) : null}
 
-            {detail.status === "COMPLETED" ? (
-              <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
-                Received — stock has arrived at the requesting store.
-              </p>
-            ) : null}
+              {detail.status === "IN_TRANSIT" ? (
+                <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
+                  In transit{detail.lead_days != null ? (
+                    <>
+                      {" "}
+                      — auto-completes in <strong>{detail.lead_days}</strong> day{detail.lead_days !== 1 ? "s" : ""}.
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
 
-            {detail.status === "DECLINED" ? (
-              <p style={{ margin: "8px 0 0", color: "#b42318", fontSize: "0.85rem", fontWeight: 600 }}>
-                Declined — no store will fulfil this request, and no approved supplier is available.
-              </p>
-            ) : null}
-          </div>
+              {detail.status === "COMPLETED" ? (
+                <p style={{ margin: 0, color: "#5b6b7c", fontSize: "0.85rem" }}>
+                  Received — stock has arrived at the requesting store.
+                </p>
+              ) : null}
 
-          <div style={{ marginTop: 12 }}>
-            <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>Invited stores</p>
-            {detail.invited.map((inv) => (
-              <div key={inv.store_id} style={{ fontSize: "0.84rem", color: "#5b6b7c", marginBottom: 3 }}>
-                <span style={{ color: "#102033", fontWeight: 500 }}>{inv.store_name}</span> — {transferLabel(inv.status)}
-                {inv.accepted_qty != null ? ` (${inv.accepted_qty} units)` : ""}
-              </div>
-            ))}
-          </div>
-          {detail.allocations.length > 0 ? (
+              {detail.status === "DECLINED" ? (
+                <p style={{ margin: "8px 0 0", color: "#b42318", fontSize: "0.85rem", fontWeight: 600 }}>
+                  Declined — no store will fulfil this request, and no approved supplier is available.
+                </p>
+              ) : null}
+            </div>
+
             <div style={{ marginTop: 12 }}>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>Fulfilments</p>
-              {detail.allocations.map((alloc) => (
-                <div key={alloc.allocation_id} style={{ fontSize: "0.84rem", color: "#5b6b7c", marginBottom: 3 }}>
-                  <span style={{ color: "#102033", fontWeight: 500 }}>
-                    {alloc.store_name ?? (alloc.source === "supplier" ? "Supplier" : "Store")}
-                  </span>
-                  {` — ${alloc.qty} units · ${transferLabel(alloc.status)}`}
+              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>Invited stores</p>
+              {detail.invited.map((inv) => (
+                <div key={inv.store_id} style={{ fontSize: "0.84rem", color: "#5b6b7c", marginBottom: 3 }}>
+                  <span style={{ color: "#102033", fontWeight: 500 }}>{inv.store_name}</span> — {transferLabel(inv.status)}
+                  {inv.accepted_qty != null ? ` (${inv.accepted_qty} units)` : ""}
                 </div>
               ))}
             </div>
-          ) : null}
-          {detail.purchase_order ? (
-            <div style={{ marginTop: 14 }}>
-              <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>
-                Purchase order
-              </p>
-              <div style={{ fontSize: "0.85rem", color: "#5b6b7c" }}>
-                <div>
-                  PO ID: <span style={{ color: "#102033" }}>{detail.purchase_order.po_id}</span>
-                </div>
-                <div>
-                  Supplier: <span style={{ color: "#102033" }}>{detail.purchase_order.supplier_name}</span>
-                </div>
-                <div>
-                  Qty: <span style={{ color: "#102033" }}>{detail.purchase_order.qty}</span>
-                </div>
-                <div>
-                  Status: <span style={{ color: "#102033" }}>{detail.purchase_order.status}</span>
-                </div>
-                <div>
-                  Expected: <span style={{ color: "#102033" }}>{formatDateTime(detail.purchase_order.expected_date)}</span>
+            {detail.allocations.length > 0 ? (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>Fulfilments</p>
+                {detail.allocations.map((alloc) => (
+                  <div key={alloc.allocation_id} style={{ fontSize: "0.84rem", color: "#5b6b7c", marginBottom: 3 }}>
+                    <span style={{ color: "#102033", fontWeight: 500 }}>
+                      {alloc.store_name ?? (alloc.source === "supplier" ? "Supplier" : "Store")}
+                    </span>
+                    {` — ${alloc.qty} units · ${transferLabel(alloc.status)}`}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {detail.purchase_order ? (
+              <div style={{ marginTop: 14 }}>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8rem", color: "#5b6b7c", fontWeight: 600 }}>
+                  Purchase order
+                </p>
+                <div style={{ fontSize: "0.85rem", color: "#5b6b7c" }}>
+                  <div>
+                    PO ID: <span style={{ color: "#102033" }}>{detail.purchase_order.po_id}</span>
+                  </div>
+                  <div>
+                    Supplier: <span style={{ color: "#102033" }}>{detail.purchase_order.supplier_name}</span>
+                  </div>
+                  <div>
+                    Qty: <span style={{ color: "#102033" }}>{detail.purchase_order.qty}</span>
+                  </div>
+                  <div>
+                    Status: <span style={{ color: "#102033" }}>{detail.purchase_order.status}</span>
+                  </div>
+                  <div>
+                    Expected: <span style={{ color: "#102033" }}>{formatDateTime(detail.purchase_order.expected_date)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : null}
-          <EventTimeline events={detail.events} />
-        </>
-      ) : null}
-    </section>
+            ) : null}
+            <EventTimeline events={detail.events} />
+          </>
+        ) : null}
+      </section>
+    </div>
   );
 }
 
@@ -281,14 +345,12 @@ function AcceptedTable({
   if (accepted.length === 0) {
     return (
       <section className="panel">
-        <h2>Accepted</h2>
         <p className="status">No accepted requests yet.</p>
       </section>
     );
   }
   return (
     <section className="panel">
-      <h2>Accepted</h2>
       {accepted.map((row) => (
         <TransferCard
           key={row.transfer_id}
@@ -366,14 +428,12 @@ function InTransitTable({
   if (outInTransit.length === 0 && inInTransit.length === 0) {
     return (
       <section className="panel">
-        <h2>In transit</h2>
         <p className="status">No transfers currently in transit.</p>
       </section>
     );
   }
   return (
     <section className="panel">
-      <h2>In transit</h2>
       {outInTransit.map((row) => (
         <TransferCard
           key={`out-${row.transfer_id}`}
@@ -421,14 +481,12 @@ function DeclinedTable({
   if (declined.length === 0) {
     return (
       <section className="panel">
-        <h2>Declined requests</h2>
         <p className="status">No declined requests.</p>
       </section>
     );
   }
   return (
     <section className="panel">
-      <h2>Declined requests</h2>
       <p style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "#5b6b7c" }}>
         Requests where all invited stores declined and no supplier could be assigned.
       </p>
@@ -521,6 +579,7 @@ function TransferCard({
 
 export default function TransferTables({
   mode,
+  view,
   outgoing,
   incoming,
   dispatching,
@@ -530,28 +589,59 @@ export default function TransferTables({
   transferDetail,
   loadingTransferDetail,
   onCloseTransferDetail,
+  onNavigate,
 }: TransferTablesProps) {
+  const meta = MODE_META[mode];
+  const listHeader = (
+    <PageHeader
+      title={meta.title}
+      subtitle={meta.subtitle}
+      breadcrumbs={[
+        {
+          label: meta.parent,
+          onClick: onNavigate ? () => onNavigate(meta.parentView) : undefined,
+        },
+        { label: meta.title },
+      ]}
+    />
+  );
+
   if (selectedTransferId && (loadingTransferDetail || transferDetail)) {
     return (
       <DetailPage
         detail={transferDetail}
         loading={loadingTransferDetail}
         onClose={onCloseTransferDetail}
+        view={view}
+        onNavigate={onNavigate}
       />
     );
   }
   if (mode === "accepted") {
     return (
-      <AcceptedTable
-        incoming={incoming}
-        dispatching={dispatching}
-        onDispatch={onDispatch}
-        onOpenTransfer={onOpenTransfer}
-      />
+      <>
+        {listHeader}
+        <AcceptedTable
+          incoming={incoming}
+          dispatching={dispatching}
+          onDispatch={onDispatch}
+          onOpenTransfer={onOpenTransfer}
+        />
+      </>
     );
   }
   if (mode === "in_transit") {
-    return <InTransitTable outgoing={outgoing} incoming={incoming} onOpenTransfer={onOpenTransfer} />;
+    return (
+      <>
+        {listHeader}
+        <InTransitTable outgoing={outgoing} incoming={incoming} onOpenTransfer={onOpenTransfer} />
+      </>
+    );
   }
-  return <DeclinedTable outgoing={outgoing} onOpenTransfer={onOpenTransfer} />;
+  return (
+    <>
+      {listHeader}
+      <DeclinedTable outgoing={outgoing} onOpenTransfer={onOpenTransfer} />
+    </>
+  );
 }

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, ConfirmModal, PageHeader } from "../../../components/ui/index.ts";
 import type { InventoryItem, RequestOptionsResponse } from "../../../types.ts";
 import DonorStoresSection from "../DonorStoresSection/index.ts";
-import { clampRequestQty, coverageSplit, flattenDonors } from "../requestHelpers.ts";
+import { clampRequestQty, coverageSplit, flattenDonors, pluralize } from "../requestHelpers.ts";
 import RequestProductSection from "../RequestProductSection/index.ts";
 import RequestSummaryPanel from "../RequestSummaryPanel/index.ts";
 import SupplierFallbackSection from "../SupplierFallbackSection/index.ts";
@@ -32,7 +32,7 @@ export default function CreateRequestPage({
   const [confirmBroadcast, setConfirmBroadcast] = useState(false);
 
   useEffect(() => {
-    setSelectedIds(stores.map((store) => store.store_id));
+    setSelectedIds([]);
     setQty(clampRequestQty(options.requested_qty, Math.max(1, options.requested_qty)));
   }, [options.product_id, options.requested_qty, stores]);
 
@@ -48,16 +48,13 @@ export default function CreateRequestPage({
 
   return (
     <div className="create-request-page">
-      <nav className="cr-breadcrumb" aria-label="Breadcrumb">
-        <button type="button" className="cr-link" onClick={onCancel}>
-          Products
-        </button>
-        <span aria-hidden="true"> / </span>
-        <span>Create / Send Request</span>
-      </nav>
       <PageHeader
-        title="Create / Send Request"
+        title="Create Request"
         subtitle="Broadcast this request to selected stores in your network."
+        breadcrumbs={[
+          { label: "Products", onClick: onCancel },
+          { label: "Create Request" },
+        ]}
       />
 
       <div className="cr-layout">
@@ -77,7 +74,11 @@ export default function CreateRequestPage({
             onClear={() => setSelectedIds([])}
             onSelectAll={() => setSelectedIds(stores.map((store) => store.store_id))}
           />
-          <SupplierFallbackSection supplier={options.supplier} supplierRemainder={supplierRemainder} />
+          <SupplierFallbackSection
+            supplier={options.supplier}
+            supplierRemainder={supplierRemainder}
+            selectedStoreCount={storeCount}
+          />
 
           {sendError ? <p className="error">{sendError}</p> : null}
 
@@ -91,9 +92,7 @@ export default function CreateRequestPage({
               disabled={storeCount === 0 || sending}
               onClick={() => setConfirmBroadcast(true)}
             >
-              {sending
-                ? "Broadcasting…"
-                : `Broadcast Request to ${storeCount} Store${storeCount === 1 ? "" : "s"}`}
+              {sending ? "Broadcasting…" : `Broadcast Request to ${pluralize(storeCount, "Store")}`}
             </Button>
           </div>
         </div>
@@ -111,20 +110,19 @@ export default function CreateRequestPage({
         title="Broadcast this request?"
         message={
           <p>
-            Send a request for <strong>{options.product_name}</strong> ({qty} units) to{" "}
-            <strong>
-              {storeCount} store{storeCount === 1 ? "" : "s"}
-            </strong>
-            . Selected stores can cover up to <strong>{networkCover}</strong> units
+            Send a request for <strong>{options.product_name}</strong> ({pluralize(qty, "unit")}) to{" "}
+            <strong>{pluralize(storeCount, "store")}</strong>.{" "}
+            {storeCount === 1 ? "The selected store can" : "Selected stores can"} cover up to{" "}
+            <strong>{pluralize(networkCover, "unit")}</strong>
             {supplierRemainder > 0 ? (
               <>
-                ; about <strong>{supplierRemainder}</strong> may go to supplier if needed
+                ; about <strong>{pluralize(supplierRemainder, "unit")}</strong> may go to supplier if needed
               </>
             ) : null}
             .
           </p>
         }
-        confirmLabel={`Broadcast to ${storeCount} store${storeCount === 1 ? "" : "s"}`}
+        confirmLabel={`Broadcast to ${pluralize(storeCount, "store")}`}
         busy={sending}
         onCancel={() => setConfirmBroadcast(false)}
         onConfirm={() => {

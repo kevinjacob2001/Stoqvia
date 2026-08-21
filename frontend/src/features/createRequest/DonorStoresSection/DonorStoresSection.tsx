@@ -1,6 +1,6 @@
 import { Fragment, useMemo } from "react";
 import type { DonorOption } from "../../../types.ts";
-import { groupDonorsByDistance, leadTimeLabel, sendImpactLabel } from "../requestHelpers.ts";
+import { groupDonorsByDistance, leadTimeLabel, pluralize, sendImpactLabel } from "../requestHelpers.ts";
 
 type DonorStoresSectionProps = {
   stores: DonorOption[];
@@ -20,6 +20,8 @@ export default function DonorStoresSection({
   onSelectAll,
 }: DonorStoresSectionProps) {
   const bands = useMemo(() => groupDonorsByDistance(stores), [stores]);
+  const selectedCount = selectedIds.length;
+  const showSelectionActions = stores.length > 0;
 
   return (
     <section className="cr-card">
@@ -27,23 +29,26 @@ export default function DonorStoresSection({
         <span className="cr-step">2</span>
         <div className="cr-section-title-row">
           <h2>Select Stores to Broadcast</h2>
-          <div className="cr-section-actions">
-            <span className="cr-selected-count">{selectedIds.length} stores selected</span>
-            {selectedIds.length > 0 ? (
-              <button type="button" className="cr-link" onClick={onClear}>
-                Clear All
-              </button>
-            ) : (
-              <button type="button" className="cr-link" onClick={onSelectAll}>
-                Select All
-              </button>
-            )}
-          </div>
+          {showSelectionActions ? (
+            <div className="cr-section-actions">
+              <span className="cr-selected-count">{pluralize(selectedCount, "store")} selected</span>
+              {selectedCount > 0 ? (
+                <button type="button" className="cr-link" onClick={onClear}>
+                  Clear All
+                </button>
+              ) : (
+                <button type="button" className="cr-link" onClick={onSelectAll}>
+                  Select All
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
       <p className="cr-help">
-        Only stores with safe surplus are shown, grouped by distance (5 km, then 10 km, then 20 km). Empty bands are
-        hidden.
+        {stores.length === 0
+          ? "No eligible donor stores are available for this product right now."
+          : "Only stores with safe surplus are shown, grouped by distance (5 km, then 10 km, then 20 km). Empty bands are hidden."}
       </p>
 
       {stores.length === 0 ? (
@@ -73,11 +78,16 @@ export default function DonorStoresSection({
                     const impact = sendImpactLabel(store, needQty);
                     const safe = store.safe_surplus > 0;
                     return (
-                      <tr key={store.store_id} className={checked ? "selected" : undefined}>
+                      <tr
+                        key={store.store_id}
+                        className={checked ? "selected" : undefined}
+                        onClick={() => onToggle(store.store_id)}
+                      >
                         <td>
                           <input
                             type="checkbox"
                             checked={checked}
+                            onClick={(event) => event.stopPropagation()}
                             onChange={() => onToggle(store.store_id)}
                             aria-label={`Select ${store.store_name}`}
                           />

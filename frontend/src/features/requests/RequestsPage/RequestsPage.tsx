@@ -1,6 +1,7 @@
 import "./RequestsPage.css";
 import { PageHeader } from "../../../components/ui/index.ts";
 import { waitingReceivedCount } from "../../../lib/transferCounts.ts";
+import { VIEW_TITLES, type HomeView } from "../../../lib/routes.ts";
 import type { IncomingTransfer, OutgoingTransfer, RespondAction } from "../../../types.ts";
 import ReceivedRequestsTable from "../ReceivedRequestsTable/index.ts";
 import SentRequestsTable from "../SentRequestsTable/index.ts";
@@ -16,7 +17,39 @@ type RequestsPageProps = {
   onOpenTransfer: (transferId: string) => void;
   onViewAllReceived?: () => void;
   onViewAllSent?: () => void;
+  onNavigate?: (view: HomeView) => void;
 };
+
+function pageCopy(
+  mode: RequestsPageMode,
+  onNavigate?: (view: HomeView) => void,
+): { title: string; subtitle: string; crumbs: { label: string; onClick?: () => void }[] } {
+  if (mode === "received") {
+    return {
+      title: VIEW_TITLES.received,
+      subtitle: "Incoming stock requests from other stores.",
+      crumbs: [
+        { label: "Requests", onClick: onNavigate ? () => onNavigate("requests") : undefined },
+        { label: VIEW_TITLES.received },
+      ],
+    };
+  }
+  if (mode === "sent") {
+    return {
+      title: VIEW_TITLES.transferred,
+      subtitle: "Requests you broadcast to the network.",
+      crumbs: [
+        { label: "Requests", onClick: onNavigate ? () => onNavigate("requests") : undefined },
+        { label: VIEW_TITLES.transferred },
+      ],
+    };
+  }
+  return {
+    title: VIEW_TITLES.requests,
+    subtitle: "Received and sent stock-balance requests.",
+    crumbs: [{ label: VIEW_TITLES.requests }],
+  };
+}
 
 export default function RequestsPage({
   mode,
@@ -27,12 +60,14 @@ export default function RequestsPage({
   onOpenTransfer,
   onViewAllReceived,
   onViewAllSent,
+  onNavigate,
 }: RequestsPageProps) {
   const waitingCount = waitingReceivedCount(incoming);
+  const copy = pageCopy(mode, onNavigate);
 
   return (
     <div className="requests-page">
-      <PageHeader title="Requests" />
+      <PageHeader title={copy.title} subtitle={copy.subtitle} breadcrumbs={copy.crumbs} />
 
       {waitingCount > 0 ? (
         <div className="req-banner" role="status">

@@ -39,6 +39,7 @@ export default function ProductsPage({
       <PageHeader
         title="Products"
         subtitle={`${inventory.store_name} inventory and balancing`}
+        breadcrumbs={[{ label: "Products" }]}
         meta={<span className="store-pill">{inventory.store_name}</span>}
       />
 
@@ -66,7 +67,6 @@ export default function ProductsPage({
           activeByProduct={activeByProduct}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          onRequestProduct={onRequestProduct}
           onTrackShipment={onTrackShipment}
         />
       </div>

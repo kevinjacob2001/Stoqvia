@@ -1,15 +1,26 @@
 import type { SupplierOption } from "../../../types.ts";
-import { leadTimeLabel } from "../requestHelpers.ts";
+import { leadTimeLabel, pluralize } from "../requestHelpers.ts";
 
 type SupplierFallbackSectionProps = {
   supplier: SupplierOption | null;
   supplierRemainder: number;
+  selectedStoreCount: number;
 };
 
 export default function SupplierFallbackSection({
   supplier,
   supplierRemainder,
+  selectedStoreCount,
 }: SupplierFallbackSectionProps) {
+  const coverageNote =
+    selectedStoreCount === 0
+      ? " Select at least one store to estimate leftover after network surplus."
+      : supplierRemainder > 0
+        ? ` Right now about ${pluralize(supplierRemainder, "unit")} would remain after selected store surplus.`
+        : selectedStoreCount === 1
+          ? " The selected store currently has enough surplus to cover this request."
+          : " Selected stores currently have enough surplus to cover this request.";
+
   return (
     <section className="cr-card">
       <div className="cr-section-head">
@@ -17,10 +28,9 @@ export default function SupplierFallbackSection({
         <div>
           <h2>Supplier Fallback</h2>
           <p className="cr-help">
-            After invited stores respond, any leftover need escalates to this supplier automatically.
-            {supplierRemainder > 0
-              ? ` Right now about ${supplierRemainder} units would remain after selected store surplus.`
-              : " Selected stores currently have enough surplus to cover this request."}
+            After invited {selectedStoreCount === 1 ? "store responds" : "stores respond"}, any leftover need
+            escalates to this supplier automatically.
+            {coverageNote}
           </p>
         </div>
       </div>
@@ -33,9 +43,13 @@ export default function SupplierFallbackSection({
               <strong>{supplier.name}</strong>
               <small>
                 Preferred
-                {supplierRemainder > 0
-                  ? ` · About ${supplierRemainder} units if stores cannot cover`
-                  : " · No leftover expected from current surplus"}
+                {selectedStoreCount === 0
+                  ? " · Select stores to estimate leftover"
+                  : supplierRemainder > 0
+                    ? ` · About ${pluralize(supplierRemainder, "unit")} if ${
+                        selectedStoreCount === 1 ? "the store cannot" : "stores cannot"
+                      } cover`
+                    : " · No leftover expected from current surplus"}
               </small>
             </div>
           </div>

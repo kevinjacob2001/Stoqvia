@@ -21,7 +21,6 @@ export function sendImpactLabel(store: DonorOption, needQty: number): {
   return { label: "High", tone: "high" };
 }
 
-
 export function clampRequestQty(value: number, maxQty: number): number {
   const max = Math.max(1, maxQty);
   if (!Number.isFinite(value)) return 1;
@@ -67,4 +66,8 @@ export function groupDonorsByDistance(stores: DonorOption[]): DistanceBand[] {
     { key: "over_20", label: "Over 20 km", stores: over20 },
   ];
   return bands.filter((band) => band.stores.length > 0);
+}
+
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
 }

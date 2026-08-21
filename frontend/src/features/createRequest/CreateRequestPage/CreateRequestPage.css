@@ -1,14 +1,8 @@
-/* Create / Send Request page */
+/* Create Request page */
 .create-request-page {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.cr-breadcrumb {
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-bottom: 4px;
 }
 
 .cr-link {
@@ -207,6 +201,10 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   background: #fafcfb;
+}
+
+.cr-donor-table tbody tr:not(.cr-band-row) {
+  cursor: pointer;
 }
 
 .cr-donor-table tr.selected {

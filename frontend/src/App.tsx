@@ -18,7 +18,7 @@ import { ProductsPage } from "./features/products/index.ts";
 import { RequestsPage } from "./features/requests/index.ts";
 import { AppShell } from "./layout/index.ts";
 import { buildActiveFulfillments } from "./lib/fulfillments.ts";
-import { pathToView, readRoute, writeRoute, type HomeView } from "./lib/routes.ts";
+import { pathToView, readRoute, writeRoute, documentTitleFor, type HomeView } from "./lib/routes.ts";
 import { transferNavStats } from "./lib/transferCounts.ts";
 import LoadError from "./sections/LoadError/index.ts";
 import LoadingState from "./sections/LoadingState/index.ts";
@@ -158,6 +158,14 @@ export default function App() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoadingInventory(false));
   }, [session, reloadKey]);
+
+  useEffect(() => {
+    if (!session) {
+      document.title = "Stoqvia";
+      return;
+    }
+    document.title = documentTitleFor(view, { detail: Boolean(selectedTransferId) });
+  }, [session, view, selectedTransferId]);
 
   useEffect(() => {
     if (!session) return;
@@ -381,6 +389,7 @@ export default function App() {
             onOpenTransfer={handleOpenTransfer}
             onViewAllReceived={() => handleChangeView("received")}
             onViewAllSent={() => handleChangeView("transferred")}
+            onNavigate={handleChangeView}
           />
         </>
       );
@@ -392,6 +401,7 @@ export default function App() {
           {errorBanner}
           <TransferTables
             mode={listMode}
+            view={view}
             outgoing={outgoing}
             incoming={incoming}
             dispatching={dispatching}
@@ -401,6 +411,7 @@ export default function App() {
             transferDetail={transferDetail}
             loadingTransferDetail={loadingTransferDetail}
             onCloseTransferDetail={handleCloseTransferDetail}
+            onNavigate={handleChangeView}
           />
         </>
       );

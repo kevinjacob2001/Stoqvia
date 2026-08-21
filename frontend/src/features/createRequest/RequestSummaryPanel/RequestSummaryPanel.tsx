@@ -1,5 +1,5 @@
 import type { DonorOption, RequestOptionsResponse, SupplierOption } from "../../../types.ts";
-import { coverageSplit, leadTimeLabel } from "../requestHelpers.ts";
+import { coverageSplit, leadTimeLabel, pluralize } from "../requestHelpers.ts";
 
 type RequestSummaryPanelProps = {
   options: RequestOptionsResponse;
@@ -14,14 +14,15 @@ export default function RequestSummaryPanel({
   selectedStores,
   supplier,
 }: RequestSummaryPanelProps) {
+  const selectedCount = selectedStores.length;
   const { totalSurplus, networkCover, supplierRemainder } = coverageSplit(qty, selectedStores);
   const nearest = [...selectedStores].sort((a, b) => a.distance_km - b.distance_km)[0];
-  const bestLead = selectedStores.length
+  const bestLead = selectedCount
     ? Math.min(...selectedStores.map((store) => store.lead_days))
     : null;
   const avgLead =
-    selectedStores.length > 0
-      ? selectedStores.reduce((sum, store) => sum + store.lead_days, 0) / selectedStores.length
+    selectedCount > 0
+      ? selectedStores.reduce((sum, store) => sum + store.lead_days, 0) / selectedCount
       : null;
 
   return (
@@ -39,19 +40,19 @@ export default function RequestSummaryPanel({
           </div>
           <div>
             <dt>Quantity</dt>
-            <dd>{qty} units</dd>
+            <dd>{pluralize(qty, "unit")}</dd>
           </div>
           <div>
-            <dt>Stores can cover</dt>
-            <dd className="stock-ok">up to {networkCover} units</dd>
+            <dt>{selectedCount === 1 ? "Store can cover" : "Stores can cover"}</dt>
+            <dd className="stock-ok">up to {pluralize(networkCover, "unit")}</dd>
           </div>
           <div>
             <dt>Supplier leftover</dt>
-            <dd>{supplierRemainder > 0 ? `${supplierRemainder} units` : "None"}</dd>
+            <dd>{supplierRemainder > 0 ? pluralize(supplierRemainder, "unit") : "None"}</dd>
           </div>
           <div>
-            <dt>Stores</dt>
-            <dd>{selectedStores.length}</dd>
+            <dt>{selectedCount === 1 ? "Store" : "Stores"}</dt>
+            <dd>{selectedCount}</dd>
           </div>
           <div>
             <dt>Best lead time</dt>
@@ -68,12 +69,12 @@ export default function RequestSummaryPanel({
         <h3>Selected Stores Overview</h3>
         <dl>
           <div>
-            <dt>Total stores selected</dt>
-            <dd>{selectedStores.length}</dd>
+            <dt>Total selected</dt>
+            <dd>{pluralize(selectedCount, "store")}</dd>
           </div>
           <div>
             <dt>Total safe surplus</dt>
-            <dd className="stock-ok">{totalSurplus} units</dd>
+            <dd className="stock-ok">{pluralize(totalSurplus, "unit")}</dd>
           </div>
           <div>
             <dt>Average lead time</dt>
@@ -91,13 +92,27 @@ export default function RequestSummaryPanel({
       <section className="cr-card cr-summary">
         <h3>Next Steps</h3>
         <ol className="cr-next-steps">
-          <li>Broadcast to selected stores</li>
-          <li>Stores accept up to their safe surplus</li>
+          <li>
+            {selectedCount === 0
+              ? "Select at least one store to broadcast"
+              : `Broadcast to ${pluralize(selectedCount, "selected store")}`}
+          </li>
+          <li>
+            {selectedCount === 1
+              ? "The store accepts up to its safe surplus"
+              : "Stores accept up to their safe surplus"}
+          </li>
           <li>Accepted qty is reserved, then dispatched</li>
           <li>
-            {supplierRemainder > 0
-              ? `About ${supplierRemainder} units may escalate to supplier if stores cannot cover`
-              : "Selected stores can cover the full request if they all accept"}
+            {selectedCount === 0
+              ? "Select stores to estimate supplier leftover"
+              : supplierRemainder > 0
+                ? `About ${pluralize(supplierRemainder, "unit")} may escalate to supplier if ${
+                    selectedCount === 1 ? "the store cannot" : "stores cannot"
+                  } cover`
+                : selectedCount === 1
+                  ? "The selected store can cover the full request if it accepts"
+                  : "Selected stores can cover the full request if they all accept"}
           </li>
         </ol>
       </section>
