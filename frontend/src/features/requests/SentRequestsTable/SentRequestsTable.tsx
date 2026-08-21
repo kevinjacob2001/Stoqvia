@@ -1,7 +1,7 @@
-import { Avatar, IdentityCell, Pagination, ProductThumb } from "../../../components/ui/index.ts";
-import { takeWithOverflow } from "../../../lib/list.ts";
+import { IdentityCell, Pagination, ProductThumb } from "../../../components/ui/index.ts";
 import { usePagedRows } from "../../../lib/usePagedRows.ts";
 import type { OutgoingTransfer } from "../../../types.ts";
+import InviteAvatarGroup from "../InviteAvatarGroup/index.ts";
 import { REQUESTS_PAGE_SIZE, sentStatus } from "../requestCopy.ts";
 
 type SentRequestsTableProps = {
@@ -38,7 +38,6 @@ export default function SentRequestsTable({ outgoing, onOpenTransfer }: SentRequ
             <tbody>
               {rows.map((row) => {
                 const status = sentStatus(row);
-                const { shown, extra } = takeWithOverflow(row.invited, 3);
                 return (
                   <tr key={row.transfer_id}>
                     <td>
@@ -55,12 +54,7 @@ export default function SentRequestsTable({ outgoing, onOpenTransfer }: SentRequ
                       </small>
                     </td>
                     <td>
-                      <div className="req-invites">
-                        {shown.map((inv) => (
-                          <Avatar key={inv.store_id} name={inv.store_name} title={`${inv.store_name} — ${inv.status}`} />
-                        ))}
-                        {extra > 0 ? <span className="req-more">+{extra} more</span> : null}
-                      </div>
+                      <InviteAvatarGroup invites={row.invited} />
                     </td>
                     <td>
                       <span className={`req-status ${status.tone}`}>{status.title}</span>

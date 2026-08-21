@@ -85,18 +85,6 @@
   font-size: 0.8rem;
 }
 
-.req-invites {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.req-more {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
 @media (max-width: 900px) {
   .req-card-head { padding-right: 4px; }
   .req-view-all { position: static; margin: 0 4px 8px auto; display: block; }
