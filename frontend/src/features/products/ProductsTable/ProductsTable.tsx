@@ -1,7 +1,5 @@
-import "./ProductsTable.css";
 import { Button, IdentityCell, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
 import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
-import { stockToneFromRisk } from "../../../lib/productDisplay.ts";
 import type { ForecastResponse, InventoryItem } from "../../../types.ts";
 
 type ProductsTableProps = {
@@ -44,7 +42,6 @@ export default function ProductsTable({
             {items.map((item) => {
               const forecast = forecasts[item.product_id];
               const risk = forecast?.risk;
-              const tone = stockToneFromRisk(risk);
               const active = activeByProduct[item.product_id];
               const shipmentComing = active?.status === "IN_TRANSIT";
               const requestBlocked = Boolean(active);
@@ -62,11 +59,7 @@ export default function ProductsTable({
                       leading={<ProductThumb name={item.product_name} />}
                     />
                   </td>
-                  <td>
-                    <span className={`stock-pill ${tone.className}`}>
-                      {item.on_hand} units {tone.label}
-                    </span>
-                  </td>
+                  <td>{item.on_hand} units</td>
                   <td className="num">{item.usable_stock}</td>
                   <td className="num">{forecast?.predicted_7d_demand ?? "—"}</td>
                   <td className="num">{forecast?.predicted_shortage_qty ?? "—"}</td>

@@ -61,16 +61,6 @@ input {
   color: var(--ok);
 }
 
-.stock-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.stock-low { color: var(--danger); }
-.stock-watch { color: var(--warn); }
 .stock-ok { color: var(--ok); }
 
 .muted-label {

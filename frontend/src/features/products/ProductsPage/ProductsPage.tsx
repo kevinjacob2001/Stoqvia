@@ -53,7 +53,7 @@ export default function ProductsPage({
       <div className="metric-row">
         <MetricCard title="My Store Stock" value={`${stats.total}`} hint="SKUs on hand" tone="green" />
         <MetricCard title="High Risk" value={`${stats.high}`} hint="Need request soon" tone="orange" />
-        <MetricCard title="Medium Risk" value={`${stats.medium}`} hint="Watch buffer" tone="blue" />
+        <MetricCard title="Medium Risk" value={`${stats.medium}`} hint="Buffer thinning" tone="blue" />
         <MetricCard title="Supplier Lead Time" value="8 days" hint="Fallback PO average" tone="purple" />
       </div>
 

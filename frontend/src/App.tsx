@@ -344,7 +344,6 @@ export default function App() {
         <CreateRequestPage
           options={options}
           inventoryItem={item}
-          forecast={forecasts[options.product_id]}
           sending={sending}
           sendError={sendError}
           onCancel={handleCancelCreateRequest}

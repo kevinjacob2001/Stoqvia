@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Button } from "../../components/ui/index.ts";
+import { useState } from "react";
+import { Button, ConfirmModal } from "../../components/ui/index.ts";
 import { formatDateTime } from "../../lib/datetime.ts";
 import { actorLabel, transferLabel } from "../../lib/transferLabels.ts";
 import type {
@@ -274,6 +275,9 @@ function AcceptedTable({
   onOpenTransfer: (id: string) => void;
 }) {
   const accepted = incoming.filter((r) => r.my_status === "ACCEPTED");
+  const [pendingDispatchId, setPendingDispatchId] = useState<string | null>(null);
+  const pendingRow = accepted.find((row) => row.transfer_id === pendingDispatchId) ?? null;
+
   if (accepted.length === 0) {
     return (
       <section className="panel">
@@ -310,7 +314,11 @@ function AcceptedTable({
           actions={
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {row.my_allocation?.status === "FULFILLED" ? (
-                <Button variant="primary" disabled={dispatching === row.transfer_id} onClick={() => onDispatch(row.transfer_id)}>
+                <Button
+                  variant="primary"
+                  disabled={dispatching === row.transfer_id}
+                  onClick={() => setPendingDispatchId(row.transfer_id)}
+                >
                   {dispatching === row.transfer_id ? "Dispatching…" : "Confirm dispatched"}
                 </Button>
               ) : null}
@@ -319,6 +327,27 @@ function AcceptedTable({
           }
         />
       ))}
+      <ConfirmModal
+        open={pendingRow != null}
+        title="Confirm dispatch?"
+        message={
+          pendingRow ? (
+            <p>
+              Confirm that <strong>{pendingRow.my_accepted_qty ?? pendingRow.qty}</strong> units of{" "}
+              <strong>{pendingRow.product_name}</strong> have left for{" "}
+              <strong>{pendingRow.requester_store_name}</strong>.
+            </p>
+          ) : null
+        }
+        confirmLabel="Confirm dispatched"
+        busy={pendingRow != null && dispatching === pendingRow.transfer_id}
+        onCancel={() => setPendingDispatchId(null)}
+        onConfirm={() => {
+          if (!pendingRow) return;
+          onDispatch(pendingRow.transfer_id);
+          setPendingDispatchId(null);
+        }}
+      />
     </section>
   );
 }

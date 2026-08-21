@@ -1,0 +1,68 @@
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 24, 18, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.confirm-card {
+  width: min(440px, 100%);
+  padding: 20px;
+}
+
+.confirm-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.confirm-message {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+
+.confirm-message p {
+  margin: 0 0 8px;
+}
+
+.confirm-message p:last-child {
+  margin-bottom: 0;
+}
+
+.confirm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.confirm-field input[type="number"] {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-weight: 500;
+  max-width: 140px;
+}
+
+.confirm-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0 0 12px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}

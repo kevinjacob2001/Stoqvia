@@ -9,3 +9,5 @@ export { default as Icon, ICON_PATHS } from "./Icon/index.ts";
 export { default as Avatar } from "./Avatar/index.ts";
 export { default as IdentityCell } from "./IdentityCell/index.ts";
 export { default as Pagination } from "./Pagination/index.ts";
+export { default as ConfirmModal } from "./ConfirmModal/index.ts";
+export type { ConfirmModalProps } from "./ConfirmModal/index.ts";

@@ -1,7 +1,6 @@
 import "./ProductDrawer.css";
 import { Button, ProductThumb, RiskBadge } from "../../../components/ui/index.ts";
 import { fulfillmentStatusLabel, type ActiveFulfillment } from "../../../lib/fulfillments.ts";
-import { stockToneFromRisk } from "../../../lib/productDisplay.ts";
 import type { ForecastResponse, InventoryItem } from "../../../types.ts";
 
 type ProductDrawerProps = {
@@ -21,8 +20,6 @@ export default function ProductDrawer({
   onRequestProduct,
   onTrackShipment,
 }: ProductDrawerProps) {
-  const tone = stockToneFromRisk(forecast?.risk);
-
   return (
     <aside className="product-drawer" aria-label="Product detail">
       <button type="button" className="drawer-close" onClick={onClose} aria-label="Close">
@@ -37,9 +34,7 @@ export default function ProductDrawer({
       <dl className="drawer-metrics">
         <div>
           <dt>My Store</dt>
-          <dd>
-            {item.on_hand} units <span className={tone.className}>{tone.label}</span>
-          </dd>
+          <dd>{item.on_hand} units</dd>
         </div>
         <div>
           <dt>Usable stock</dt>

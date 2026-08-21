@@ -1,7 +1,7 @@
 import "./CreateRequestPage.css";
 import { useEffect, useMemo, useState } from "react";
-import { Button, PageHeader } from "../../../components/ui/index.ts";
-import type { ForecastResponse, InventoryItem, RequestOptionsResponse } from "../../../types.ts";
+import { Button, ConfirmModal, PageHeader } from "../../../components/ui/index.ts";
+import type { InventoryItem, RequestOptionsResponse } from "../../../types.ts";
 import DonorStoresSection from "../DonorStoresSection/index.ts";
 import { flattenDonors } from "../requestHelpers.ts";
 import RequestProductSection from "../RequestProductSection/index.ts";
@@ -11,7 +11,6 @@ import SupplierFallbackSection from "../SupplierFallbackSection/index.ts";
 export type CreateRequestPageProps = {
   options: RequestOptionsResponse;
   inventoryItem?: InventoryItem;
-  forecast?: ForecastResponse;
   sending: boolean;
   sendError: string | null;
   onCancel: () => void;
@@ -21,7 +20,6 @@ export type CreateRequestPageProps = {
 export default function CreateRequestPage({
   options,
   inventoryItem,
-  forecast,
   sending,
   sendError,
   onCancel,
@@ -30,6 +28,7 @@ export default function CreateRequestPage({
   const stores = useMemo(() => flattenDonors(options.nearby_groups), [options.nearby_groups]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [qty, setQty] = useState(options.requested_qty);
+  const [confirmBroadcast, setConfirmBroadcast] = useState(false);
 
   useEffect(() => {
     setSelectedIds(stores.map((store) => store.store_id));
@@ -37,6 +36,7 @@ export default function CreateRequestPage({
   }, [options.product_id, options.requested_qty, stores]);
 
   const selectedStores = stores.filter((store) => selectedIds.includes(store.store_id));
+  const storeCount = selectedIds.length;
 
   function toggle(storeId: string) {
     setSelectedIds((current) =>
@@ -63,7 +63,6 @@ export default function CreateRequestPage({
           <RequestProductSection
             options={options}
             inventoryItem={inventoryItem}
-            forecast={forecast}
             qty={qty}
             onQtyChange={setQty}
           />
@@ -86,12 +85,12 @@ export default function CreateRequestPage({
             <Button
               variant="primary"
               className="cr-broadcast"
-              disabled={selectedIds.length === 0 || sending}
-              onClick={() => onBroadcast(selectedIds)}
+              disabled={storeCount === 0 || sending}
+              onClick={() => setConfirmBroadcast(true)}
             >
               {sending
                 ? "Broadcasting…"
-                : `Broadcast Request to ${selectedIds.length} Store${selectedIds.length === 1 ? "" : "s"}`}
+                : `Broadcast Request to ${storeCount} Store${storeCount === 1 ? "" : "s"}`}
             </Button>
           </div>
         </div>
@@ -103,6 +102,27 @@ export default function CreateRequestPage({
           supplier={options.supplier}
         />
       </div>
+
+      <ConfirmModal
+        open={confirmBroadcast}
+        title="Broadcast this request?"
+        message={
+          <p>
+            Send a request for <strong>{options.product_name}</strong> ({qty} units) to{" "}
+            <strong>
+              {storeCount} store{storeCount === 1 ? "" : "s"}
+            </strong>
+            . Invited stores can accept, decline, or review stock.
+          </p>
+        }
+        confirmLabel={`Broadcast to ${storeCount} store${storeCount === 1 ? "" : "s"}`}
+        busy={sending}
+        onCancel={() => setConfirmBroadcast(false)}
+        onConfirm={() => {
+          onBroadcast(selectedIds);
+          setConfirmBroadcast(false);
+        }}
+      />
     </div>
   );
 }

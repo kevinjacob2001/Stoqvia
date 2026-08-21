@@ -1,11 +1,9 @@
 import { Button, ProductThumb } from "../../../components/ui/index.ts";
-import { stockToneFromRisk } from "../../../lib/productDisplay.ts";
-import type { ForecastResponse, InventoryItem, RequestOptionsResponse } from "../../../types.ts";
+import type { InventoryItem, RequestOptionsResponse } from "../../../types.ts";
 
 type RequestProductSectionProps = {
   options: RequestOptionsResponse;
   inventoryItem?: InventoryItem;
-  forecast?: ForecastResponse;
   qty: number;
   onQtyChange: (qty: number) => void;
 };
@@ -13,12 +11,10 @@ type RequestProductSectionProps = {
 export default function RequestProductSection({
   options,
   inventoryItem,
-  forecast,
   qty,
   onQtyChange,
 }: RequestProductSectionProps) {
   const onHand = inventoryItem?.on_hand ?? null;
-  const tone = stockToneFromRisk(forecast?.risk);
 
   return (
     <section className="cr-card">
@@ -37,10 +33,7 @@ export default function RequestProductSection({
         </div>
         {onHand != null ? (
           <div className="cr-stock-status">
-            <span className={tone.className}>
-              My Store Stock: {onHand} units
-            </span>
-            <small className={tone.className}>{tone.label === "Low" ? "Low Stock" : tone.label}</small>
+            <span>My Store Stock: {onHand} units</span>
           </div>
         ) : null}
       </div>
