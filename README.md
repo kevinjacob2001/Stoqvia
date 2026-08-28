@@ -1,6 +1,6 @@
 # Stoqvia
 
-MongoDB + FastAPI inventory balancing MVP.
+Inter-store stock transfer made easy.
 
 ## Layout
 
