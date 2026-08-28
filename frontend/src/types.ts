@@ -133,7 +133,7 @@ export type IncomingTransfer = {
   delivery_lead_days: number | null;
   max_accept_qty: number | null;
   safe_surplus: number | null;
-  all_invited: InviteStatus[];
+  fulfilled_other_store_count: number;
   allocations: TransferAllocation[];
   status: string;
   created_at: string | null;
@@ -167,6 +167,8 @@ export type TransferDetail = {
   requester_store_name: string;
   accepted_store_name: string | null;
   my_status: string | null;
+  is_requester: boolean;
+  fulfilled_other_store_count: number | null;
   invited: InviteStatus[];
   allocations: TransferAllocation[];
   created_at: string | null;

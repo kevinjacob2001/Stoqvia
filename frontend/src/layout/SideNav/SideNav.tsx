@@ -1,6 +1,6 @@
 import "./SideNav.css";
 import type { ReactNode } from "react";
-import { Icon, ICON_PATHS } from "../../components/ui/index.ts";
+import { BrandLockup, Icon, ICON_PATHS } from "../../components/ui/index.ts";
 import type { HomeView } from "../../lib/routes.ts";
 import type { MeResponse } from "../../types.ts";
 
@@ -88,7 +88,7 @@ export default function SideNav({ session, view, counts, onChangeView, onLogout 
   return (
     <aside className="side-nav">
       <div className="side-brand">
-        <span className="side-logo">STOQVIA</span>
+        <BrandLockup tone="dark" size="md" />
         <small>Inter-store transfer made easy!</small>
       </div>
 

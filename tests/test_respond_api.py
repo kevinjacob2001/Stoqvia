@@ -282,17 +282,29 @@ def test_uninvited_store_cannot_respond(client: TestClient) -> None:
     assert r.status_code == 403
 
 
-def test_all_invited_visible_on_incoming(client: TestClient) -> None:
+def test_other_store_fulfilled_count_on_incoming(client: TestClient) -> None:
     product_id, marion_id, mile_id = _drill_ids()
     cbd = _login(client, "admin.cbd", "cbd123")
-    _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
+    tid = _broadcast(client, cbd["token"], product_id, [marion_id, mile_id])
 
     marion = _login(client, "admin.marion", "marion123")
-    transfers = client.get("/api/v1/transfers", headers=_auth(marion["token"])).json()
-    row = transfers["incoming"][0]
-    invited_names = {inv["store_name"] for inv in row["all_invited"]}
-    assert "Marion" in invited_names
-    assert "Mile End" in invited_names
+    mile = _login(client, "admin.mileend", "mileend123")
+    assert _respond(client, marion["token"], tid, "ACCEPT", qty=10).status_code == 200
+
+    mile_transfers = client.get("/api/v1/transfers", headers=_auth(mile["token"])).json()
+    row = mile_transfers["incoming"][0]
+    assert "all_invited" not in row
+    assert row["fulfilled_other_store_count"] == 1
+
+    detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(mile["token"])).json()
+    assert detail["is_requester"] is False
+    assert detail["invited"] == []
+    assert detail["fulfilled_other_store_count"] == 1
+    assert detail["accepted_store_name"] is None
+    assert all(
+        alloc.get("store_id") in (None, mile["store_id"]) or alloc.get("source") == "supplier"
+        for alloc in detail["allocations"]
+    )
 
 
 def test_all_declines_auto_create_po_and_move_in_transit(client: TestClient) -> None:

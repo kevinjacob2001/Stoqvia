@@ -134,6 +134,27 @@ def _find_store_allocation(doc: dict, store_oid: Any) -> Optional[dict]:
     return None
 
 
+def _fulfilled_other_store_count(doc: dict, viewer_store_oid: Any) -> int:
+    """Other invited stores (excluding viewer) that have already accepted."""
+    count = 0
+    for inv in doc.get("invited", []):
+        if inv["store_id"] == viewer_store_oid:
+            continue
+        if inv.get("status") == INVITE_ACCEPTED:
+            count += 1
+    return count
+
+
+def _donor_visible_allocations(doc: dict, viewer_store_oid: Any) -> List[dict]:
+    visible: List[dict] = []
+    for alloc in doc.get("allocations", []):
+        if alloc.get("source") == ALLOC_SOURCE_SUPPLIER:
+            visible.append(alloc)
+        elif alloc.get("store_id") == viewer_store_oid:
+            visible.append(alloc)
+    return visible
+
+
 def _derive_status(doc: dict) -> str:
     remaining = _remaining(doc)
     allocs = doc.get("allocations", [])
@@ -449,8 +470,10 @@ def _build_incoming(
         delivery_lead_days=delivery_lead_days,
         max_accept_qty=max_accept_qty,
         safe_surplus=safe_surplus,
-        all_invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
-        allocations=[_build_allocation(a, names) for a in doc.get("allocations", [])],
+        fulfilled_other_store_count=_fulfilled_other_store_count(doc, store_oid),
+        allocations=[
+            _build_allocation(a, names) for a in _donor_visible_allocations(doc, store_oid)
+        ],
         status=doc["status"],
         created_at=doc.get("created_at"),
         accepted_at=doc.get("accepted_at"),
@@ -473,11 +496,15 @@ def _build_detail(
     if db is not None:
         purchase_order = _load_purchase_order(db, _primary_po_id(doc))
 
+    is_requester = doc["requester_store_id"] == viewer_store_oid
     my_invite = next(
         (inv for inv in doc["invited"] if inv["store_id"] == viewer_store_oid),
         None,
     )
     supplier_name = purchase_order.supplier_name if purchase_order else None
+    allocation_docs = doc.get("allocations", [])
+    if not is_requester:
+        allocation_docs = _donor_visible_allocations(doc, viewer_store_oid)
     return TransferDetail(
         transfer_id=str(doc["_id"]),
         sku=sku,
@@ -486,10 +513,18 @@ def _build_detail(
         remaining_qty=_remaining(doc),
         status=doc["status"],
         requester_store_name=names.get(doc["requester_store_id"], ""),
-        accepted_store_name=_accepted_store_label(doc, names, supplier_name=supplier_name),
+        accepted_store_name=_accepted_store_label(doc, names, supplier_name=supplier_name)
+        if is_requester
+        else None,
         my_status=my_invite["status"] if my_invite else None,
-        invited=[_build_invite_status(inv, names) for inv in doc["invited"]],
-        allocations=[_build_allocation(a, names) for a in doc.get("allocations", [])],
+        is_requester=is_requester,
+        fulfilled_other_store_count=None
+        if is_requester
+        else _fulfilled_other_store_count(doc, viewer_store_oid),
+        invited=[_build_invite_status(inv, names) for inv in doc["invited"]]
+        if is_requester
+        else [],
+        allocations=[_build_allocation(a, names) for a in allocation_docs],
         created_at=doc.get("created_at"),
         accepted_at=doc.get("accepted_at"),
         dispatched_at=doc.get("dispatched_at"),

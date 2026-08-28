@@ -59,6 +59,11 @@ function detailBreadcrumbs(
   return crumbs;
 }
 
+function fulfilledOtherLabel(count: number): string {
+  if (count === 0) return "None yet";
+  return `${count} store${count === 1 ? "" : "s"}`;
+}
+
 export default function TransferDetailPage({
   detail,
   loading,
@@ -102,7 +107,14 @@ export default function TransferDetailPage({
                   warn: detail.remaining_qty > 0,
                 },
                 { label: "Requester", value: detail.requester_store_name },
-                { label: "Accepted by", value: detail.accepted_store_name ?? "—" },
+                ...(detail.is_requester
+                  ? [{ label: "Accepted by", value: detail.accepted_store_name ?? "—" }]
+                  : [
+                      {
+                        label: "Other stores fulfilled",
+                        value: fulfilledOtherLabel(detail.fulfilled_other_store_count ?? 0),
+                      },
+                    ]),
                 ...(detail.my_status
                   ? [{ label: "Your status", value: transferLabel(detail.my_status) }]
                   : []),
@@ -132,35 +144,37 @@ export default function TransferDetailPage({
             )}
           </SurfaceCard>
 
-          <TransferExpandSection
-            title="Invited stores"
-            summary={`${detail.invited.length} store${detail.invited.length === 1 ? "" : "s"} invited`}
-            defaultOpen
-          >
-            {detail.invited.length === 0 ? (
-              <p className="td-empty">No invited stores.</p>
-            ) : (
-              <ul className="td-store-list">
-                {detail.invited.map((invite) => (
-                  <li key={invite.store_id}>
-                    <Avatar name={invite.store_name} title="" />
-                    <div>
-                      <strong>{invite.store_name}</strong>
-                      <small>
-                        {invite.accepted_qty != null
-                          ? `${invite.accepted_qty} units accepted`
-                          : "No units accepted yet"}
-                      </small>
-                    </div>
-                    <TransferStatusPill status={invite.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </TransferExpandSection>
+          {detail.is_requester ? (
+            <TransferExpandSection
+              title="Invited stores"
+              summary={`${detail.invited.length} store${detail.invited.length === 1 ? "" : "s"} invited`}
+              defaultOpen
+            >
+              {detail.invited.length === 0 ? (
+                <p className="td-empty">No invited stores.</p>
+              ) : (
+                <ul className="td-store-list">
+                  {detail.invited.map((invite) => (
+                    <li key={invite.store_id}>
+                      <Avatar name={invite.store_name} title="" />
+                      <div>
+                        <strong>{invite.store_name}</strong>
+                        <small>
+                          {invite.accepted_qty != null
+                            ? `${invite.accepted_qty} units accepted`
+                            : "No units accepted yet"}
+                        </small>
+                      </div>
+                      <TransferStatusPill status={invite.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TransferExpandSection>
+          ) : null}
 
           <TransferExpandSection
-            title="Fulfilments"
+            title={detail.is_requester ? "Fulfilments" : "Your fulfilment"}
             summary={
               detail.allocations.length === 0
                 ? "None yet"
@@ -180,7 +194,7 @@ export default function TransferDetailPage({
                     />
                     <div>
                       <strong>
-                        {alloc.store_name ?? (alloc.source === "supplier" ? "Supplier" : "Store")}
+                        {alloc.store_name ?? (alloc.source === "supplier" ? "Supplier" : "Your store")}
                       </strong>
                       <small>
                         {alloc.qty} units · {alloc.source}
@@ -194,7 +208,7 @@ export default function TransferDetailPage({
             )}
           </TransferExpandSection>
 
-          {detail.purchase_order ? (
+          {detail.purchase_order && detail.is_requester ? (
             <TransferExpandSection
               title="Purchase order"
               summary={`${detail.purchase_order.supplier_name} · ${detail.purchase_order.qty} units`}

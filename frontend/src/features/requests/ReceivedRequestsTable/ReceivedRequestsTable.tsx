@@ -69,6 +69,11 @@ export default function ReceivedRequestsTable({
                         <small>Safe to send up to {row.max_accept_qty}</small>
                       ) : row.my_accepted_qty != null ? (
                         <small>You sent {row.my_accepted_qty}</small>
+                      ) : row.fulfilled_other_store_count > 0 ? (
+                        <small>
+                          {row.fulfilled_other_store_count} other store
+                          {row.fulfilled_other_store_count === 1 ? "" : "s"} already fulfilled
+                        </small>
                       ) : null}
                     </td>
                     <td>

@@ -1,7 +1,6 @@
-
 .side-nav {
-  background: linear-gradient(180deg, var(--forest-deep) 0%, #0a2a20 100%);
-  color: #e8f2ec;
+  background: #e02c1c;
+  color: #fff;
   display: flex;
   flex-direction: column;
   padding: 20px 14px;
@@ -12,18 +11,23 @@
 
 .side-brand {
   padding: 8px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.side-logo {
-  display: block;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  font-size: 1.15rem;
+.side-brand .brand-lockup__name {
+  color: #fff;
+}
+
+.side-brand .brand-lockup__x {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .side-brand small {
-  color: #9bb5a8;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .side-menu {
@@ -54,12 +58,12 @@
 }
 
 .side-item:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .side-item.active,
 .side-item.active-parent {
-  background: var(--forest);
+  background: rgba(0, 0, 0, 0.22);
   color: #fff;
 }
 
@@ -88,17 +92,17 @@
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 0.88rem;
-  color: #c5d8ce;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .side-sub-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 
 .side-sub-item.active {
   color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .side-count,
@@ -110,17 +114,17 @@
   font-size: 0.72rem;
   font-weight: 600;
   padding: 2px 7px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .side-badge {
-  background: var(--forest);
+  background: rgba(0, 0, 0, 0.28);
 }
 
 .side-footer {
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -129,7 +133,7 @@
 .side-store-chip {
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.14);
 }
 
 .side-store-chip strong {
@@ -138,17 +142,22 @@
 }
 
 .side-store-chip small {
-  color: #9bb5a8;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .side-logout {
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   background: transparent;
-  color: #e8f2ec;
+  color: #fff;
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
 }
+
+.side-logout:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 @media (max-width: 860px) {
   .side-nav {
     position: relative;

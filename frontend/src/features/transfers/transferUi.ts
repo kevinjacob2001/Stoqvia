@@ -14,9 +14,18 @@ export function transferStatusTone(status: string): StatusTone {
   return "muted";
 }
 
-export function transferStatusSummary(detail: Pick<TransferDetail, "status" | "accepted_store_name" | "lead_days">): string {
+export function transferStatusSummary(
+  detail: Pick<TransferDetail, "status" | "accepted_store_name" | "lead_days" | "is_requester" | "fulfilled_other_store_count">,
+): string {
   switch (detail.status) {
     case "OPEN":
+      if (!detail.is_requester) {
+        const count = detail.fulfilled_other_store_count ?? 0;
+        if (count > 0) {
+          return `${count} other store${count === 1 ? "" : "s"} already fulfilled part of this request.`;
+        }
+        return "Waiting for stores in the network to respond.";
+      }
       return "Awaiting store responses. Invited stores can accept, decline, or review stock.";
     case "FULFILLED":
       return `Accepted by ${detail.accepted_store_name ?? "a store"}. Waiting for dispatch.`;

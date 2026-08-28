@@ -1,5 +1,6 @@
 import "./AppShell.css";
 import type { ReactNode } from "react";
+import { SiteFooter } from "../../components/ui/index.ts";
 import type { HomeView } from "../../lib/routes.ts";
 import type { MeResponse } from "../../types.ts";
 import SideNav, { type NavCounts } from "../SideNav/index.ts";
@@ -23,7 +24,10 @@ export default function AppShell({ session, view, counts, onChangeView, onLogout
         onChangeView={onChangeView}
         onLogout={onLogout}
       />
-      <div className="main-stage">{children}</div>
+      <div className="main-stage">
+        <div className="main-stage__content">{children}</div>
+        <SiteFooter />
+      </div>
     </div>
   );
 }

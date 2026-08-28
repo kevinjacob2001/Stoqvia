@@ -126,12 +126,6 @@ input {
   padding: 6px 4px;
 }
 
-.shell {
-  max-width: 480px;
-  margin: 48px auto;
-  padding: 24px 20px;
-}
-
 .panel {
   background: var(--card);
   border: 1px solid var(--line);

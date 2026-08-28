@@ -23,3 +23,5 @@ export { default as MetricGrid } from "./MetricGrid/index.ts";
 export type { MetricGridItem } from "./MetricGrid/index.ts";
 export { default as ActivityTimeline } from "./ActivityTimeline/index.ts";
 export type { ActivityTimelineItem } from "./ActivityTimeline/index.ts";
+export { default as BrandLockup } from "./BrandLockup/index.ts";
+export { default as SiteFooter } from "./SiteFooter/index.ts";

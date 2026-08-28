@@ -102,7 +102,7 @@ class IncomingTransfer(BaseModel):
     # Cap for Accept: min(remaining need, donor safe surplus). Null when not actionable.
     max_accept_qty: Optional[int] = None
     safe_surplus: Optional[int] = None
-    all_invited: List[InviteStatus]
+    fulfilled_other_store_count: int = Field(ge=0)
     allocations: List[TransferAllocation] = Field(default_factory=list)
     status: str = STATUS_OPEN
     created_at: Optional[datetime] = None
@@ -136,6 +136,8 @@ class TransferDetail(BaseModel):
     requester_store_name: str
     accepted_store_name: Optional[str] = None
     my_status: Optional[str] = None
+    is_requester: bool
+    fulfilled_other_store_count: Optional[int] = Field(default=None, ge=0)
     invited: List[InviteStatus]
     allocations: List[TransferAllocation] = Field(default_factory=list)
     created_at: Optional[datetime] = None

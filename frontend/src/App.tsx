@@ -12,7 +12,7 @@ import {
   respondToTransfer,
 } from "./api.ts";
 import { clearToken, getToken, setToken } from "./auth.ts";
-import { Button } from "./components/ui/index.ts";
+import { BrandLockup, Button, SiteFooter } from "./components/ui/index.ts";
 import { CreateRequestPage } from "./features/createRequest/index.ts";
 import { ProductsPage } from "./features/products/index.ts";
 import { RequestsPage } from "./features/requests/index.ts";
@@ -308,23 +308,29 @@ export default function App() {
 
   if (checkingSession) {
     return (
-      <div className="shell">
-        <header>
-          <h1>Stoqvia</h1>
-        </header>
-        <LoadingState message="Checking session…" />
+      <div className="login-page">
+        <div className="login-card">
+          <header className="login-brand">
+            <BrandLockup tone="light" size="lg" />
+          </header>
+          <LoadingState message="Checking session…" />
+        </div>
+        <SiteFooter />
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="shell">
-        <header>
-          <h1>Stoqvia</h1>
-          <p>Sign in to your store</p>
-        </header>
-        <LoginForm error={loginError} submitting={submitting} onSubmit={handleLogin} />
+      <div className="login-page">
+        <div className="login-card">
+          <header className="login-brand">
+            <BrandLockup tone="light" size="lg" />
+            <p>Inter-store inventory transfer for Bunnings stores</p>
+          </header>
+          <LoginForm error={loginError} submitting={submitting} onSubmit={handleLogin} />
+        </div>
+        <SiteFooter />
       </div>
     );
   }
