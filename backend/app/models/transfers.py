@@ -103,6 +103,8 @@ class IncomingTransfer(BaseModel):
     max_accept_qty: Optional[int] = None
     safe_surplus: Optional[int] = None
     fulfilled_other_store_count: int = Field(ge=0)
+    # True when another invited store holds the exclusive CHECKING lock.
+    stock_under_review_by_other: bool = False
     allocations: List[TransferAllocation] = Field(default_factory=list)
     status: str = STATUS_OPEN
     created_at: Optional[datetime] = None

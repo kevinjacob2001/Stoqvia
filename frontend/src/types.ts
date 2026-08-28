@@ -134,6 +134,7 @@ export type IncomingTransfer = {
   max_accept_qty: number | null;
   safe_surplus: number | null;
   fulfilled_other_store_count: number;
+  stock_under_review_by_other: boolean;
   allocations: TransferAllocation[];
   status: string;
   created_at: string | null;

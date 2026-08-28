@@ -88,6 +88,7 @@ export default function ReceivedRequestsTable({
                             maxAcceptQty={row.max_accept_qty ?? 0}
                             safeSurplus={row.safe_surplus ?? 0}
                             busy={responding === row.transfer_id}
+                            lockedByOtherReview={row.stock_under_review_by_other}
                             onRespond={(action, qty) => onRespond(row.transfer_id, action, qty)}
                           />
                         ) : null}

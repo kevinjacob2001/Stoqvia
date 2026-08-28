@@ -145,6 +145,14 @@ def _fulfilled_other_store_count(doc: dict, viewer_store_oid: Any) -> int:
     return count
 
 
+def _stock_under_review_by_other(doc: dict, viewer_store_oid: Any) -> bool:
+    """True when a different invited store holds the exclusive CHECKING lock."""
+    return any(
+        inv["store_id"] != viewer_store_oid and inv.get("status") == INVITE_CHECKING
+        for inv in doc.get("invited", [])
+    )
+
+
 def _donor_visible_allocations(doc: dict, viewer_store_oid: Any) -> List[dict]:
     visible: List[dict] = []
     for alloc in doc.get("allocations", []):
@@ -471,6 +479,7 @@ def _build_incoming(
         max_accept_qty=max_accept_qty,
         safe_surplus=safe_surplus,
         fulfilled_other_store_count=_fulfilled_other_store_count(doc, store_oid),
+        stock_under_review_by_other=_stock_under_review_by_other(doc, store_oid),
         allocations=[
             _build_allocation(a, names) for a in _donor_visible_allocations(doc, store_oid)
         ],
@@ -750,6 +759,11 @@ def respond_to_transfer(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Cannot decline from status {current_status}",
+            )
+        if current_status == INVITE_PENDING and _stock_under_review_by_other(doc, responder_oid):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Another store is reviewing stock — please wait",
             )
         database.stock_transfers.update_one(
             {"_id": transfer_oid},

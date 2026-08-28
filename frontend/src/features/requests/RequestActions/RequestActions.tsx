@@ -8,6 +8,7 @@ type RequestActionsProps = {
   maxAcceptQty: number;
   safeSurplus: number;
   busy: boolean;
+  lockedByOtherReview?: boolean;
   onRespond: (action: RespondAction, qty?: number) => void;
 };
 
@@ -19,9 +20,11 @@ export default function RequestActions({
   maxAcceptQty,
   safeSurplus,
   busy,
+  lockedByOtherReview = false,
   onRespond,
 }: RequestActionsProps) {
   const reviewing = status === "CHECKING";
+  const locked = lockedByOtherReview && !reviewing;
   const [pending, setPending] = useState<PendingAction>(null);
   const [acceptQty, setAcceptQty] = useState(Math.max(1, maxAcceptQty));
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -58,16 +61,17 @@ export default function RequestActions({
   }
 
   const reviewAction = reviewing ? "CLEAR_CHECK" : "CHECK_STOCK";
+  const actionsDisabled = busy || locked;
 
   return (
     <>
-      <Button variant="primary" disabled={busy || maxAcceptQty < 1} onClick={openAccept}>
+      <Button variant="primary" disabled={actionsDisabled || maxAcceptQty < 1} onClick={openAccept}>
         Accept
       </Button>
-      <Button disabled={busy} onClick={() => setPending(reviewAction)}>
+      <Button disabled={actionsDisabled} onClick={() => setPending(reviewAction)}>
         {reviewing ? "Clear review" : "Review stock"}
       </Button>
-      <Button variant="danger" disabled={busy} onClick={() => setPending("DECLINE")}>
+      <Button variant="danger" disabled={actionsDisabled} onClick={() => setPending("DECLINE")}>
         Decline
       </Button>
 

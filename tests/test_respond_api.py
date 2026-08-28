@@ -257,6 +257,14 @@ def test_check_stock_blocks_accept_from_other(client: TestClient) -> None:
     r = _respond(client, mile["token"], tid, "ACCEPT")
     assert r.status_code == 409
 
+    transfers = client.get("/api/v1/transfers", headers=_auth(mile["token"])).json()
+    row = transfers["incoming"][0]
+    assert row["my_status"] == "PENDING"
+    assert row["stock_under_review_by_other"] is True
+
+    decline = _respond(client, mile["token"], tid, "DECLINE")
+    assert decline.status_code == 409
+
 
 def test_clear_check_allows_accept(client: TestClient) -> None:
     product_id, marion_id, mile_id = _drill_ids()
@@ -268,6 +276,9 @@ def test_clear_check_allows_accept(client: TestClient) -> None:
     _respond(client, marion["token"], tid, "CLEAR_CHECK")
 
     mile = _login(client, "admin.mileend", "mileend123")
+    transfers = client.get("/api/v1/transfers", headers=_auth(mile["token"])).json()
+    assert transfers["incoming"][0]["stock_under_review_by_other"] is False
+
     r = _respond(client, mile["token"], tid, "ACCEPT")
     assert r.status_code == 200
 

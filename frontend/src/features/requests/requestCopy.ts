@@ -19,6 +19,9 @@ function transitDetail(leadDays: number | null): string | undefined {
 export function receivedStatus(row: IncomingTransfer): StatusMessage {
   switch (row.my_status) {
     case "PENDING":
+      if (row.stock_under_review_by_other) {
+        return { title: "Under review by a different store", tone: "info" };
+      }
       return { title: "Needs your response", tone: "need" };
     case "CHECKING":
       return { title: "You are reviewing stock", tone: "info" };
