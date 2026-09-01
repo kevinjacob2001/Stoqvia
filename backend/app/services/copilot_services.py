@@ -340,3 +340,209 @@ async def execute_copilot_tool(
     return result
 
 
+# ---------------------------------------------------------
+# 8. FORMAT GROUNDED RESPONSES
+
+def format_copilot_result(
+    tool_name: str,
+    result: Dict[str, Any],
+) -> CopilotResponse:
+    """
+    Convert trusted backend results into the final API
+    response without asking the LLM to rewrite facts.
+    """
+
+    if tool_name == "search_products":
+        count = int(
+            result.get("total_count", 0)
+        )
+
+        return CopilotResponse(
+            status="SUCCESS",
+            intent=CopilotIntent.SEARCH_PRODUCTS,
+            message=(
+                f"Found {count} matching products."
+            ),
+            data=result,
+            suggested_actions=[
+                SuggestedAction(
+                    type="NAVIGATE",
+                    label="View products",
+                    path="/products",
+                )
+            ],
+        )
+
+    if tool_name == "recommend_donor_stores":
+        count = int(
+            result.get("total_donor_count", 0)
+        )
+
+        product_id = str(
+            result.get("product_id", "")
+        )
+
+        return CopilotResponse(
+            status="SUCCESS",
+            intent=CopilotIntent.RECOMMEND_DONORS,
+            message=(
+                f"Found {count} safe donor stores."
+            ),
+            data=result,
+            suggested_actions=[
+                SuggestedAction(
+                    type="NAVIGATE",
+                    label="View fulfilment options",
+                    path=(
+                        "/requests/create"
+                        f"?productId={product_id}"
+                    ),
+                )
+            ],
+        )
+
+    raise ValueError(
+        "Unsupported Copilot tool result."
+    )
+
+
+# ---------------------------------------------------------
+# 9. RUN THE COMPLETE COPILOT WORKFLOW
+
+async def run_copilot(
+    message: str,
+    authenticated_store_id: str,
+    selected_product_id: Optional[str] = None,
+) -> CopilotResponse:
+    """
+    Run the complete read-only Stoqvia Copilot workflow.
+    """
+
+    started_at = perf_counter()
+    selected_tool_name: Optional[str] = None
+
+    if not COPILOT_ENABLED:
+        return CopilotResponse(
+            status="ERROR",
+            intent=CopilotIntent.OUT_OF_SCOPE,
+            message=(
+                "Stoqvia Copilot is currently disabled."
+            ),
+        )
+
+    try:
+        selection = await choose_copilot_tool(
+            message=message,
+            authenticated_store_id=(
+                authenticated_store_id
+            ),
+            selected_product_id=(
+                selected_product_id
+            ),
+        )
+
+        selected_tool_name = selection.tool_name
+
+        if (
+            selection.status
+            == "CLARIFICATION_REQUIRED"
+        ):
+            clarification_intent = (
+                CopilotIntent.RECOMMEND_DONORS
+                if selection.tool_name
+                == "recommend_donor_stores"
+                else CopilotIntent.OUT_OF_SCOPE
+            )
+
+            return CopilotResponse(
+                status="CLARIFICATION_REQUIRED",
+                intent=clarification_intent,
+                message=(
+                    selection.message
+                    or "Please provide more information."
+                ),
+            )
+
+        if selection.status == "OUT_OF_SCOPE":
+            return CopilotResponse(
+                status="OUT_OF_SCOPE",
+                intent=CopilotIntent.OUT_OF_SCOPE,
+                message=(
+                    selection.message
+                    or (
+                        "I can search products and "
+                        "recommend safe donor stores."
+                    )
+                ),
+            )
+
+        tool_result = await execute_copilot_tool(
+            selection
+        )
+
+        return format_copilot_result(
+            tool_name=selection.tool_name or "",
+            result=tool_result,
+        )
+
+    except TimeoutError:
+        logger.warning(
+            "Stoqvia Copilot request timed out.",
+            extra={
+                "model": COPILOT_MODEL,
+                "prompt_version": (
+                    COPILOT_PROMPT_VERSION
+                ),
+            },
+        )
+
+        return CopilotResponse(
+            status="ERROR",
+            intent=CopilotIntent.OUT_OF_SCOPE,
+            message=(
+                "The Copilot took too long to respond. "
+                "Please try again."
+            ),
+        )
+
+    except Exception:
+        logger.exception(
+            "Stoqvia Copilot request failed.",
+            extra={
+                "model": COPILOT_MODEL,
+                "prompt_version": (
+                    COPILOT_PROMPT_VERSION
+                ),
+                "tool_name": selected_tool_name,
+            },
+        )
+
+        return CopilotResponse(
+            status="ERROR",
+            intent=CopilotIntent.OUT_OF_SCOPE,
+            message=(
+                "I couldn't process that inventory "
+                "request. Please try again."
+            ),
+        )
+
+    finally:
+        duration_ms = round(
+            (
+                perf_counter() - started_at
+            )
+            * 1000,
+            2,
+        )
+
+        logger.info(
+            "Stoqvia Copilot request completed.",
+            extra={
+                "model": COPILOT_MODEL,
+                "prompt_version": (
+                    COPILOT_PROMPT_VERSION
+                ),
+                "tool_name": selected_tool_name,
+                "duration_ms": duration_ms,
+            },
+        )
