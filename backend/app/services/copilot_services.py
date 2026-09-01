@@ -124,3 +124,123 @@ copilot_llm = llm.bind_tools(
 )
 
 
+# ---------------------------------------------------------
+# 4. PARSE THE MODEL RESPONSE
+
+def parse_tool_selection(
+    response: Any,
+) -> ToolSelection:
+    """
+    Convert Qwen's response into a validated tool decision.
+    """
+
+    tool_calls = response.tool_calls or []
+
+    if len(tool_calls) > 1:
+        raise ValueError(
+            "Copilot requested more than one tool."
+        )
+
+    if len(tool_calls) == 1:
+        tool_call = tool_calls[0]
+        tool_name = tool_call["name"]
+
+        if tool_name not in COPILOT_TOOLS_BY_NAME:
+            raise ValueError(
+                f"Unapproved tool requested: {tool_name}"
+            )
+
+        return ToolSelection(
+            status="TOOL_SELECTED",
+            tool_name=tool_name,
+            tool_args=tool_call.get("args", {}),
+        )
+
+    content = str(
+        response.content or ""
+    ).strip()
+
+    if content.startswith("[CLARIFY]"):
+        return ToolSelection(
+            status="CLARIFICATION_REQUIRED",
+            message=content.removeprefix(
+                "[CLARIFY]"
+            ).strip(),
+        )
+
+    if content.startswith("[OUT_OF_SCOPE]"):
+        return ToolSelection(
+            status="OUT_OF_SCOPE",
+            message=content.removeprefix(
+                "[OUT_OF_SCOPE]"
+            ).strip(),
+        )
+
+    return ToolSelection(
+        status="OUT_OF_SCOPE",
+        message=(
+            content
+            or (
+                "I can search products and recommend "
+                "safe donor stores."
+            )
+        ),
+    )
+
+
+# ---------------------------------------------------------
+# 5. ENFORCE TRUSTED ARGUMENTS
+# ---------------------------------------------------------
+
+def enforce_trusted_arguments(
+    selection: ToolSelection,
+    authenticated_store_id: str,
+    selected_product_id: Optional[str],
+) -> ToolSelection:
+    """
+    Replace model-generated identity arguments with trusted
+    backend context.
+    """
+
+    if selection.status != "TOOL_SELECTED":
+        return selection
+
+    if selection.tool_name == "search_products":
+        model_args = selection.tool_args
+
+        safe_args = {
+            "store_id": authenticated_store_id,
+            "query": model_args.get("query"),
+            "category": model_args.get("category"),
+            "risk": model_args.get("risk"),
+        }
+
+        return selection.model_copy(
+            update={"tool_args": safe_args}
+        )
+
+    if (
+        selection.tool_name
+        == "recommend_donor_stores"
+    ):
+        if not selected_product_id:
+            return ToolSelection(
+                status="CLARIFICATION_REQUIRED",
+                tool_name="recommend_donor_stores",
+                message="Please select a product first.",
+            )
+
+        safe_args = {
+            "store_id": authenticated_store_id,
+            "product_id": selected_product_id,
+        }
+
+        return selection.model_copy(
+            update={"tool_args": safe_args}
+        )
+
+    raise ValueError(
+        "Unsupported Copilot tool."
+    )
+
+
