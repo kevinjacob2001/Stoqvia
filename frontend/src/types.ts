@@ -182,3 +182,46 @@ export type TransferDetail = {
 };
 
 export type RespondAction = "ACCEPT" | "DECLINE" | "CHECK_STOCK" | "CLEAR_CHECK";
+
+export type CopilotIntent = "SEARCH_PRODUCTS" | "RECOMMEND_DONORS" | "OUT_OF_SCOPE";
+
+export type CopilotStatus =
+  | "SUCCESS"
+  | "CLARIFICATION_REQUIRED"
+  | "OUT_OF_SCOPE"
+  | "ERROR";
+
+export type CopilotSuggestedAction = {
+  type: "NAVIGATE";
+  label: string;
+  path: string;
+};
+
+export type CopilotProductHit = {
+  product_id: string;
+  sku: string;
+  product_name: string;
+  category?: string | null;
+  risk: RiskLevel;
+  usable_stock: number;
+  predicted_7d_demand: number;
+  predicted_shortage_qty: number;
+};
+
+export type CopilotDonorHit = {
+  store_id: string;
+  store_name: string;
+  distance_km: number;
+  lead_days: number;
+  safe_surplus: number;
+  recommended_qty: number;
+  band: string;
+};
+
+export type CopilotResponse = {
+  status: CopilotStatus;
+  intent: CopilotIntent;
+  message: string;
+  data: Record<string, unknown> | null;
+  suggested_actions: CopilotSuggestedAction[];
+};
