@@ -453,8 +453,10 @@ export default function App() {
         ...counts,
         alertCount,
       }}
+      selectedProductId={options?.product_id ?? null}
       onChangeView={handleChangeView}
       onLogout={handleLogout}
+      onSelectProduct={handleRequestProduct}
     >
       {mainContent}
     </AppShell>
