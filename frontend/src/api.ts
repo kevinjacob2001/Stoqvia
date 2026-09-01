@@ -1,5 +1,6 @@
 import { getToken } from "./auth.ts";
 import type {
+  CopilotResponse,
   IncomingTransfer,
   LoginResponse,
   MeResponse,
@@ -103,4 +104,14 @@ export function dispatchTransfer(transferId: string): Promise<OutgoingTransfer> 
 
 export function fetchTransferDetail(transferId: string): Promise<TransferDetail> {
   return requestJson<TransferDetail>(`/transfers/${transferId}`);
+}
+
+export function askCopilot(message: string, productId?: string | null): Promise<CopilotResponse> {
+  return requestJson<CopilotResponse>("/copilot/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      message,
+      context: productId ? { product_id: productId } : {},
+    }),
+  });
 }
