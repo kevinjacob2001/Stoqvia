@@ -56,16 +56,19 @@ def get_request_options(
     store_id: str,
     product_id: str,
     db: Optional[Database] = None,
+    *,
+    require_high_risk: bool = True,
 ) -> RequestOptionsResponse:
     database = db if db is not None else get_db()
     receiver = forecast_service.get_forecast(store_id, product_id, db=database)
-    if receiver.risk != "HIGH":
+    if require_high_risk and receiver.risk != "HIGH":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Request options are only available when risk is HIGH",
         )
 
-    requested_qty = receiver.predicted_shortage_qty
+    # Transfer flow uses shortage; exploratory/copilot lookups still need a positive qty.
+    requested_qty = max(1, int(receiver.predicted_shortage_qty))
     store_oid = parse_object_id(store_id, "store_id")
     product_oid = parse_object_id(product_id, "product_id")
     origin = _require(database.stores.find_one({"_id": store_oid}), f"Store not found: {store_id}")

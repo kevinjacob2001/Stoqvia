@@ -1,36 +1,111 @@
-"""Read-only tools the Stoqvia copilot can call against live store data."""
+"""Read-only tools available to the Stoqvia Copilot."""
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
+from langchain_core.tools import tool
+
+from app.db import get_db
 from app.services import forecast_service, request_options_service
+from app.services.inventory_service import parse_object_id
+
+RiskLevel = Literal["HIGH", "MEDIUM", "LOW"]
 
 
-def find_high_risk_products(store_id: str) -> Dict[str, Any]:
-    """Find products with HIGH 7-day risk at the store."""
+@tool
+def search_products(
+    store_id: str,
+    query: Optional[str] = None,
+    category: Optional[str] = None,
+    risk: Optional[RiskLevel] = None,
+) -> Dict[str, Any]:
+    """
+    Search products at a store.
+
+    Products may be filtered by product name, SKU, category
+    or inventory risk. All filters are optional.
+    """
     response = forecast_service.get_store_forecasts(store_id)
-    products: List[Dict[str, Any]] = [
-        {
-            "product_id": row.product_id,
-            "sku": row.sku,
-            "product_name": row.product_name,
-            "risk": row.risk,
-            "usable_stock": row.current_usable_stock,
-            "predicted_7d_demand": row.predicted_7d_demand,
-            "predicted_shortage_qty": row.predicted_shortage_qty,
-        }
-        for row in response.forecasts
-        if row.risk == "HIGH"
+
+    database = get_db()
+    product_oids = [
+        parse_object_id(row.product_id, "product_id") for row in response.forecasts
     ]
+    categories_by_id = {
+        str(doc["_id"]): doc.get("category")
+        for doc in database.products.find({"_id": {"$in": product_oids}}, {"category": 1})
+    }
+
+    products: List[Dict[str, Any]] = []
+
+    search_text = query.casefold().strip() if query else None
+    category_filter = category.casefold().strip() if category else None
+
+    for row in response.forecasts:
+        row_category = categories_by_id.get(row.product_id)
+
+        if risk is not None and row.risk != risk:
+            continue
+
+        if category_filter is not None:
+            if row_category is None:
+                continue
+            if str(row_category).casefold() != category_filter:
+                continue
+
+        if search_text is not None:
+            searchable_values = [
+                str(row.product_name).casefold(),
+                str(row.sku).casefold(),
+                str(row_category or "").casefold(),
+            ]
+            if not any(search_text in value for value in searchable_values):
+                continue
+
+        products.append(
+            {
+                "product_id": row.product_id,
+                "sku": row.sku,
+                "product_name": row.product_name,
+                "category": row_category,
+                "risk": row.risk,
+                "usable_stock": row.current_usable_stock,
+                "predicted_7d_demand": row.predicted_7d_demand,
+                "predicted_shortage_qty": row.predicted_shortage_qty,
+            }
+        )
+
+    maximum_results = 20
     return {
         "store_id": store_id,
-        "count": len(products),
-        "products": products[:20],
+        "filters": {
+            "query": query,
+            "category": category,
+            "risk": risk,
+        },
+        "total_count": len(products),
+        "returned_count": min(len(products), maximum_results),
+        "truncated": len(products) > maximum_results,
+        "products": products[:maximum_results],
     }
 
 
-def recommend_donor_stores(store_id: str, product_id: str) -> Dict[str, Any]:
-    """Find nearby stores with safe surplus for a HIGH-risk product."""
-    options = request_options_service.get_request_options(store_id, product_id)
+@tool
+def recommend_donor_stores(
+    store_id: str,
+    product_id: str,
+) -> Dict[str, Any]:
+    """
+    Find nearby stores with backend-verified safe surplus
+    for the selected product.
+
+    Works for any product
+    """
+    options = request_options_service.get_request_options(
+        store_id,
+        product_id,
+        require_high_risk=False,
+    )
+
     donors: List[Dict[str, Any]] = []
     for group in options.nearby_groups:
         for donor in group.stores:
@@ -45,28 +120,29 @@ def recommend_donor_stores(store_id: str, product_id: str) -> Dict[str, Any]:
                     "band": group.label,
                 }
             )
-    donors.sort(key=lambda row: (row["distance_km"], -row["safe_surplus"]))
+
+    donors.sort(key=lambda donor: (donor["distance_km"], -donor["safe_surplus"]))
+
+    maximum_results = 5
     return {
         "store_id": store_id,
         "product_id": product_id,
         "sku": options.sku,
         "product_name": options.product_name,
         "requested_qty": options.requested_qty,
-        "donors": donors[:5],
+        "total_donor_count": len(donors),
+        "returned_donor_count": min(len(donors), maximum_results),
+        "truncated": len(donors) > maximum_results,
+        "donors": donors[:maximum_results],
         "supplier": options.supplier.model_dump() if options.supplier else None,
     }
 
 
-def _named(fn: Callable[..., Dict[str, Any]], name: str) -> Callable[..., Dict[str, Any]]:
-    fn.name = name  # type: ignore[attr-defined]
-    return fn
-
-
 COPILOT_TOOLS = [
-    _named(find_high_risk_products, "find_high_risk_products"),
-    _named(recommend_donor_stores, "recommend_donor_stores"),
+    search_products,
+    recommend_donor_stores,
 ]
 
-COPILOT_TOOLS_BY_NAME: Dict[str, Callable[..., Dict[str, Any]]] = {
-    tool.name: tool for tool in COPILOT_TOOLS  # type: ignore[attr-defined]
+COPILOT_TOOLS_BY_NAME = {
+    copilot_tool.name: copilot_tool for copilot_tool in COPILOT_TOOLS
 }

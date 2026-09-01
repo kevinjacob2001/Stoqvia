@@ -7,20 +7,15 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class CopilotIntent(str, Enum):
-    """Inventory capabilities supported by the Copilot."""
+    """Capabilities supported by Stoqvia Copilot."""
 
-    FIND_HIGH_RISK_PRODUCTS = "FIND_HIGH_RISK_PRODUCTS"
+    SEARCH_PRODUCTS = "SEARCH_PRODUCTS"
     RECOMMEND_DONORS = "RECOMMEND_DONORS"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
 class CopilotContext(BaseModel):
-    """
-    Trusted product context supplied by the Stoqvia interface.
-
-    The store ID is not included because it must come from
-    the authenticated backend session.
-    """
+    """Trusted product context supplied by the interface."""
 
     product_id: Optional[str] = Field(
         default=None,
@@ -41,7 +36,7 @@ class CopilotContext(BaseModel):
 
 
 class CopilotRequest(BaseModel):
-    """Request received from the Stoqvia frontend."""
+    """Natural-language question sent by the manager."""
 
     message: str = Field(
         min_length=1,
@@ -64,10 +59,7 @@ class CopilotRequest(BaseModel):
 
 
 class ToolSelection(BaseModel):
-    """
-    Validated internal representation of the tool requested
-    by the LLM.
-    """
+    """Validated internal representation of an LLM decision."""
 
     status: Literal[
         "TOOL_SELECTED",
@@ -77,7 +69,7 @@ class ToolSelection(BaseModel):
 
     tool_name: Optional[
         Literal[
-            "find_high_risk_products",
+            "search_products",
             "recommend_donor_stores",
         ]
     ] = None
@@ -90,12 +82,7 @@ class ToolSelection(BaseModel):
 
 
 class SuggestedAction(BaseModel):
-    """
-    Safe action returned to the frontend.
-
-    The Copilot may navigate the manager to a page, but it
-    cannot create or modify a stock transfer.
-    """
+    """Safe navigation action returned to the interface."""
 
     type: Literal["NAVIGATE"]
     label: str
@@ -103,7 +90,7 @@ class SuggestedAction(BaseModel):
 
 
 class CopilotResponse(BaseModel):
-    """Structured response returned by the Copilot API."""
+    """Structured Copilot API response."""
 
     status: Literal[
         "SUCCESS",
@@ -114,7 +101,6 @@ class CopilotResponse(BaseModel):
 
     intent: CopilotIntent
     message: str
-
     data: Optional[Dict[str, Any]] = None
 
     suggested_actions: List[SuggestedAction] = Field(
