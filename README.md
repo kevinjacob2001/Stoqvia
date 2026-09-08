@@ -132,3 +132,45 @@ flowchart TD
 
 **Not in this repository:** push notifications, enterprise identity providers, multi-role permissions beyond store admin, and authenticated access on catalogue/forecast GET routes (those reads are currently open).
 
+## AI Copilot capabilities
+
+Stoqvia Copilot turns a manager’s sentence into **one approved, read-only tool call**. It does not change inventory, create transfers, approve dispatch, or query MongoDB itself. Python services return stock and donor figures; the language model only selects a tool (or refuses).
+
+Verified tools:
+
+
+| Tool                     | What it does                                                                                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_products`        | Search the authenticated store’s forecasted catalogue by name, SKU, category, or HIGH / MEDIUM / LOW risk                                                                           |
+| `recommend_donor_stores` | List nearby stores with backend-verified safe surplus for a product (from the selected product, a SKU in the question, or tool arguments), optionally filtered by a minimum surplus |
+
+
+Unsupported questions return an out-of-scope response. Donor questions without a selected product or SKU return a clarification prompt.
+
+```text
+Manager question
+    → Qwen tool selection (temperature 0, auto tool choice)
+    → Trusted store and product arguments enforced in Python
+    → One allowlisted read-only tool
+    → Structured reply (product rows can open Create Request from the Copilot modal)
+```
+
+Implementation details confirmed in `backend/app/services/copilot_services.py`:
+
+- Model: `qwen2.5:7b` via Ollama (`ChatOllama`), default base URL `http://localhost:11434`
+- Timeout: 20 seconds
+- Prompt version: `v1` (overridable)
+- Kill switch: `COPILOT_ENABLED` (default `true`)
+
+Safety principles:
+
+- Read-only operation
+- Approved tool allowlist only; unknown tools are rejected
+- Authenticated store ID overwrites any store the model proposes
+- No direct database access by the model
+- No invented stock figures in the tool path (numbers come from forecast and request-option services)
+- No autonomous transfer creation
+- Prompt treated as untrusted; injection-style cases are included in the frozen eval
+
+The Copilot is decision support. Employees still create, accept, and dispatch transfers in the application.
+
