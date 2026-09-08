@@ -18,6 +18,7 @@ function InviteTip({ invite }: { invite: InviteStatus }) {
       <span className="invite-tip-body">
         <strong>{invite.store_name}</strong>
         <small>{transferLabel(invite.status)}</small>
+        {invite.decline_reason ? <small>{invite.decline_reason}</small> : null}
       </span>
     </div>
   );
