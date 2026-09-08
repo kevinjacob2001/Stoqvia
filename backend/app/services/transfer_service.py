@@ -45,6 +45,19 @@ from app.services import forecast_service
 
 DEFAULT_LEAD_DAYS = 2
 ACTIVE_FULFILLMENT_STATUSES = (STATUS_OPEN, STATUS_FULFILLED, STATUS_IN_TRANSIT)
+_MAX_NOTE = 500
+
+
+def _clean_note(value: Optional[str], *, required: bool = False, label: str = "Message") -> Optional[str]:
+    text = (value or "").strip()
+    if required and not text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{label} is required")
+    if len(text) > _MAX_NOTE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{label} must be {_MAX_NOTE} characters or fewer",
+        )
+    return text or None
 
 
 def _now() -> datetime:
@@ -100,11 +113,13 @@ def _remaining(doc: dict) -> int:
 
 
 def _build_invite_status(invite: dict, names: Dict[Any, str]) -> InviteStatus:
+    reason = invite.get("decline_reason")
     return InviteStatus(
         store_id=str(invite["store_id"]),
         store_name=names.get(invite["store_id"], ""),
         status=invite["status"],
         accepted_qty=int(invite["accepted_qty"]) if invite.get("accepted_qty") is not None else None,
+        decline_reason=str(reason) if reason else None,
     )
 
 
@@ -444,6 +459,7 @@ def _build_outgoing(doc: dict, names: Dict[Any, str], sku: str, product_name: st
         completed_at=doc.get("completed_at"),
         accepted_store_name=_accepted_store_label(doc, names),
         lead_days=doc.get("lead_days"),
+        note=doc.get("note") or None,
         events=[TransferEvent(**e) for e in doc.get("events", [])],
     )
 
@@ -489,6 +505,7 @@ def _build_incoming(
         dispatched_at=doc.get("dispatched_at"),
         completed_at=doc.get("completed_at"),
         lead_days=doc.get("lead_days"),
+        note=doc.get("note") or None,
         events=[TransferEvent(**e) for e in doc.get("events", [])],
     )
 
@@ -539,6 +556,7 @@ def _build_detail(
         dispatched_at=doc.get("dispatched_at"),
         completed_at=doc.get("completed_at"),
         lead_days=doc.get("lead_days"),
+        note=doc.get("note") or None,
         events=[TransferEvent(**e) for e in doc.get("events", [])],
         purchase_order=purchase_order,
     )
@@ -641,6 +659,7 @@ def create_transfer(
     product_id: str,
     donor_store_ids: List[str],
     qty: Optional[int] = None,
+    note: Optional[str] = None,
     db: Optional[Database] = None,
 ) -> OutgoingTransfer:
     database = db if db is not None else get_db()
@@ -698,19 +717,21 @@ def create_transfer(
         {"store_id": parse_object_id(sid, "store_id"), "status": INVITE_PENDING}
         for sid in unique_ids
     ]
-    result = database.stock_transfers.insert_one(
-        {
-            "product_id": product_oid,
-            "requester_store_id": requester_oid,
-            "qty": request_qty,
-            "remaining_qty": request_qty,
-            "status": STATUS_OPEN,
-            "created_at": now,
-            "invited": invited,
-            "allocations": [],
-            "events": [{"at": now, "actor": "System", "action": "REQUESTED"}],
-        }
-    )
+    transfer_doc: Dict[str, Any] = {
+        "product_id": product_oid,
+        "requester_store_id": requester_oid,
+        "qty": request_qty,
+        "remaining_qty": request_qty,
+        "status": STATUS_OPEN,
+        "created_at": now,
+        "invited": invited,
+        "allocations": [],
+        "events": [{"at": now, "actor": "System", "action": "REQUESTED"}],
+    }
+    broadcast_note = _clean_note(note, label="Note")
+    if broadcast_note:
+        transfer_doc["note"] = broadcast_note
+    result = database.stock_transfers.insert_one(transfer_doc)
     names = _store_names(database)
     doc = database.stock_transfers.find_one({"_id": result.inserted_id})
     return _build_outgoing(doc, names, options.sku, options.product_name)
@@ -765,9 +786,15 @@ def respond_to_transfer(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Another store is reviewing stock — please wait",
             )
+        reason = _clean_note(body.message, required=True, label="Decline reason")
         database.stock_transfers.update_one(
             {"_id": transfer_oid},
-            {"$set": {f"invited.{my_idx}.status": INVITE_DECLINED}},
+            {
+                "$set": {
+                    f"invited.{my_idx}.status": INVITE_DECLINED,
+                    f"invited.{my_idx}.decline_reason": reason,
+                }
+            },
         )
         _append_event(database, transfer_oid, actor_name, "DECLINED")
         doc = database.stock_transfers.find_one({"_id": transfer_oid})
