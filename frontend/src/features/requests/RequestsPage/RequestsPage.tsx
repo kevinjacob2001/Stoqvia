@@ -13,7 +13,7 @@ type RequestsPageProps = {
   incoming: IncomingTransfer[];
   outgoing: OutgoingTransfer[];
   responding: string | null;
-  onRespond: (transferId: string, action: RespondAction, qty?: number) => void;
+  onRespond: (transferId: string, action: RespondAction, qty?: number, message?: string) => void;
   onOpenTransfer: (transferId: string) => void;
   onViewAllReceived?: () => void;
   onViewAllSent?: () => void;
