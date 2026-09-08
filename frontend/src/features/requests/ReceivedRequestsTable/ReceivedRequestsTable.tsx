@@ -8,7 +8,7 @@ import { receivedStatus, REQUESTS_PAGE_SIZE } from "../requestCopy.ts";
 type ReceivedRequestsTableProps = {
   incoming: IncomingTransfer[];
   responding: string | null;
-  onRespond: (transferId: string, action: RespondAction, qty?: number) => void;
+  onRespond: (transferId: string, action: RespondAction, qty?: number, message?: string) => void;
   onOpenTransfer: (transferId: string) => void;
 };
 
@@ -60,6 +60,7 @@ export default function ReceivedRequestsTable({
                         subtitle={`SKU: ${row.sku}`}
                         leading={<ProductThumb name={row.product_name} sku={row.sku} />}
                       />
+                      {row.note ? <small className="req-note">Note: {row.note}</small> : null}
                     </td>
                     <td>
                       <div className="req-need">
@@ -89,7 +90,9 @@ export default function ReceivedRequestsTable({
                             safeSurplus={row.safe_surplus ?? 0}
                             busy={responding === row.transfer_id}
                             lockedByOtherReview={row.stock_under_review_by_other}
-                            onRespond={(action, qty) => onRespond(row.transfer_id, action, qty)}
+                            onRespond={(action, qty, message) =>
+                              onRespond(row.transfer_id, action, qty, message)
+                            }
                           />
                         ) : null}
                         <button className="link-button" type="button" onClick={() => onOpenTransfer(row.transfer_id)}>
