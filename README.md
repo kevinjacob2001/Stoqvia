@@ -206,3 +206,15 @@ Demand model:
 
 Sales in the demo are generated from `data/seed/json/sales_params.json`, not live tills.
 
+## Automation
+
+A FastAPI lifespan task starts `auto_complete_loop` when `AUTO_COMPLETE_INTERVAL_SECONDS` is greater than 0 (default **30 seconds**). On each tick it completes in-transit store transfers and supplier allocations whose lead time has passed, updates purchase orders to received where applicable, and writes system events. Setting the interval to `0` disables the job.
+
+Shutdown sets a stop event and awaits the task, then closes the MongoDB client.
+
+Staff can also trigger the same sweep with `POST /api/v1/transfers/jobs/complete-due` while authenticated.
+
+`SUPPLIER_LEAD_MINUTES` can shorten supplier transit for local testing. `0` (default) uses seed `lead_days` as calendar days.
+
+Automated: due-transfer completion. AI-assisted: Copilot recommendations. Employee-approved: create, respond, and dispatch.
+
