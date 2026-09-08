@@ -29,8 +29,8 @@ ALLOC_COMPLETED = "COMPLETED"
 
 class CreateTransferRequest(BaseModel):
     product_id: str = Field(min_length=1)
-    donor_store_ids: List[str] = Field(min_length=1)
-    # Optional; defaults to predicted shortage. Must be between 1 and shortage.
+    donor_store_ids: List[str] = Field(default_factory=list)
+    # Optional; defaults to predicted shortage. Any qty >= 1 is allowed.
     qty: Optional[int] = Field(default=None, ge=1)
     note: Optional[str] = Field(default=None, max_length=500)
 

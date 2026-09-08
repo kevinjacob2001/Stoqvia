@@ -352,7 +352,8 @@ def _auto_escalate_remaining(db: Database, transfer_oid: ObjectId, doc: dict) ->
             _set_derived_status(db, transfer_oid, refreshed)
         return
 
-    _append_event(db, transfer_oid, "System", "ALL_DECLINED")
+    if doc.get("invited"):
+        _append_event(db, transfer_oid, "System", "ALL_DECLINED")
 
     supplier = _best_supplier_for_product(db, doc["product_id"])
     if supplier is None:
@@ -664,11 +665,6 @@ def create_transfer(
 ) -> OutgoingTransfer:
     database = db if db is not None else get_db()
     unique_ids = list(dict.fromkeys(donor_store_ids))
-    if not unique_ids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Select at least one store",
-        )
     if requester_store_id in unique_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -693,25 +689,33 @@ def create_transfer(
         )
 
     eligible = _eligible_donor_ids(options)
-    unknown = [sid for sid in unique_ids if sid not in eligible]
-    if unknown:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more stores cannot safely fulfil this request",
-        )
+    supplier_only = not unique_ids
+    if supplier_only:
+        if eligible:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Select at least one store",
+            )
+        if options.supplier is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No donor stores or approved supplier for this product",
+            )
+    else:
+        unknown = [sid for sid in unique_ids if sid not in eligible]
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="One or more stores cannot safely fulfil this request",
+            )
 
     now = _now()
-    max_qty = int(options.requested_qty)
-    if max_qty < 1:
+    suggested_qty = max(1, int(options.requested_qty))
+    request_qty = int(qty) if qty is not None else suggested_qty
+    if request_qty < 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No shortage to request for this product",
-        )
-    request_qty = int(qty) if qty is not None else max_qty
-    if request_qty < 1 or request_qty > max_qty:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Request qty must be between 1 and {max_qty} (predicted shortage)",
+            detail="Request qty must be at least 1",
         )
     invited = [
         {"store_id": parse_object_id(sid, "store_id"), "status": INVITE_PENDING}
@@ -728,12 +732,15 @@ def create_transfer(
         "allocations": [],
         "events": [{"at": now, "actor": "System", "action": "REQUESTED"}],
     }
-    broadcast_note = _clean_note(note, label="Note")
+    broadcast_note = None if supplier_only else _clean_note(note, label="Note")
     if broadcast_note:
         transfer_doc["note"] = broadcast_note
     result = database.stock_transfers.insert_one(transfer_doc)
     names = _store_names(database)
     doc = database.stock_transfers.find_one({"_id": result.inserted_id})
+    if supplier_only and doc is not None:
+        _auto_escalate_remaining(database, result.inserted_id, doc)
+        doc = database.stock_transfers.find_one({"_id": result.inserted_id})
     return _build_outgoing(doc, names, options.sku, options.product_name)
 
 

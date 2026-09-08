@@ -208,7 +208,7 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                 "created_at": _date(),
                 "invited": {
                     "bsonType": "array",
-                    "minItems": 1,
+                    "minItems": 0,
                     "items": {
                         "bsonType": "object",
                         "required": ["store_id", "status"],

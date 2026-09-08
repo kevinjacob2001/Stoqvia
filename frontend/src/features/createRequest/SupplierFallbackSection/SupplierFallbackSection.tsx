@@ -6,15 +6,18 @@ type SupplierFallbackSectionProps = {
   supplier: SupplierOption | null;
   supplierRemainder: number;
   selectedStoreCount: number;
+  supplierOnly?: boolean;
 };
 
 export default function SupplierFallbackSection({
   supplier,
   supplierRemainder,
   selectedStoreCount,
+  supplierOnly = false,
 }: SupplierFallbackSectionProps) {
-  const coverageNote =
-    selectedStoreCount === 0
+  const coverageNote = supplierOnly
+    ? " No stores have safe surplus, so this order goes to the supplier now."
+    : selectedStoreCount === 0
       ? " Select at least one store to estimate leftover after network surplus."
       : supplierRemainder > 0
         ? ` Right now about ${pluralize(supplierRemainder, "unit")} would remain after selected store surplus.`
@@ -29,8 +32,10 @@ export default function SupplierFallbackSection({
         <div>
           <h2>Supplier Fallback</h2>
           <p className="cr-help">
-            After invited {selectedStoreCount === 1 ? "store responds" : "stores respond"}, any leftover need
-            escalates to this supplier automatically.
+            {supplierOnly
+              ? "This request will go straight to the preferred supplier."
+              : `After invited ${selectedStoreCount === 1 ? "store responds" : "stores respond"}, any leftover need
+            escalates to this supplier automatically.`}
             {coverageNote}
           </p>
         </div>
@@ -45,7 +50,9 @@ export default function SupplierFallbackSection({
               <small>
                 Preferred
                 {selectedStoreCount === 0
-                  ? " · Select stores to estimate leftover"
+                  ? supplierOnly
+                    ? " · Full quantity will be ordered"
+                    : " · Select stores to estimate leftover"
                   : supplierRemainder > 0
                     ? ` · About ${pluralize(supplierRemainder, "unit")} if ${
                         selectedStoreCount === 1 ? "the store cannot" : "stores cannot"

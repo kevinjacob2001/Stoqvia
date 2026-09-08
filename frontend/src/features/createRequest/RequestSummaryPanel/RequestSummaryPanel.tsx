@@ -7,6 +7,7 @@ type RequestSummaryPanelProps = {
   qty: number;
   selectedStores: DonorOption[];
   supplier: SupplierOption | null;
+  supplierOnly?: boolean;
 };
 
 export default function RequestSummaryPanel({
@@ -14,6 +15,7 @@ export default function RequestSummaryPanel({
   qty,
   selectedStores,
   supplier,
+  supplierOnly = false,
 }: RequestSummaryPanelProps) {
   const selectedCount = selectedStores.length;
   const { totalSurplus, networkCover, supplierRemainder } = coverageSplit(qty, selectedStores);
@@ -76,26 +78,36 @@ export default function RequestSummaryPanel({
       <SurfaceCard title="Next Steps">
         <ol className="cr-next-steps">
           <li>
-            {selectedCount === 0
-              ? "Select at least one store to broadcast"
-              : `Broadcast to ${pluralize(selectedCount, "selected store")}`}
+            {supplierOnly
+              ? "Request the full quantity from the supplier"
+              : selectedCount === 0
+                ? "Select at least one store to broadcast"
+                : `Broadcast to ${pluralize(selectedCount, "selected store")}`}
           </li>
           <li>
-            {selectedCount === 1
-              ? "The store accepts up to its safe surplus"
-              : "Stores accept up to their safe surplus"}
+            {supplierOnly
+              ? "A purchase order is created immediately"
+              : selectedCount === 1
+                ? "The store accepts up to its safe surplus"
+                : "Stores accept up to their safe surplus"}
           </li>
-          <li>Accepted qty is reserved, then dispatched</li>
           <li>
-            {selectedCount === 0
-              ? "Select stores to estimate supplier leftover"
-              : supplierRemainder > 0
-                ? `About ${pluralize(supplierRemainder, "unit")} may escalate to supplier if ${
-                    selectedCount === 1 ? "the store cannot" : "stores cannot"
-                  } cover`
-                : selectedCount === 1
-                  ? "The selected store can cover the full request if it accepts"
-                  : "Selected stores can cover the full request if they all accept"}
+            {supplierOnly
+              ? "Stock arrives after supplier lead time"
+              : "Accepted qty is reserved, then dispatched"}
+          </li>
+          <li>
+            {supplierOnly
+              ? `${supplier?.name ?? "The supplier"} covers this request`
+              : selectedCount === 0
+                ? "Select stores to estimate supplier leftover"
+                : supplierRemainder > 0
+                  ? `About ${pluralize(supplierRemainder, "unit")} may escalate to supplier if ${
+                      selectedCount === 1 ? "the store cannot" : "stores cannot"
+                    } cover`
+                  : selectedCount === 1
+                    ? "The selected store can cover the full request if it accepts"
+                    : "Selected stores can cover the full request if they all accept"}
           </li>
         </ol>
       </SurfaceCard>

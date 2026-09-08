@@ -21,10 +21,9 @@ export function sendImpactLabel(store: DonorOption, needQty: number): {
   return { label: "High", tone: "high" };
 }
 
-export function clampRequestQty(value: number, maxQty: number): number {
-  const max = Math.max(1, maxQty);
+export function clampRequestQty(value: number): number {
   if (!Number.isFinite(value)) return 1;
-  return Math.min(max, Math.max(1, Math.floor(value)));
+  return Math.max(1, Math.floor(value));
 }
 
 export function coverageSplit(needQty: number, selectedStores: DonorOption[]): {

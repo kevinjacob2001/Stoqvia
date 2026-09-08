@@ -51,7 +51,7 @@ export default function DonorStoresSection({
       </div>
       <p className="cr-help">
         {stores.length === 0
-          ? "No eligible donor stores are available for this product right now."
+          ? "No eligible donor stores are available. Request from the supplier instead."
           : "Only stores with safe surplus are shown, grouped by distance (5 km, then 10 km, then 20 km). Empty bands are hidden."}
       </p>
 

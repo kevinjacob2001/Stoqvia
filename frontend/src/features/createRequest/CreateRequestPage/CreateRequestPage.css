@@ -356,3 +356,13 @@
   resize: vertical;
   min-height: 72px;
 }
+
+.cr-note--disabled {
+  opacity: 0.6;
+}
+
+.cr-note textarea:disabled {
+  background: #f3f5f4;
+  color: var(--muted);
+  cursor: not-allowed;
+}

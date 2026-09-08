@@ -6,7 +6,7 @@ type RequestProductSectionProps = {
   options: RequestOptionsResponse;
   inventoryItem?: InventoryItem;
   qty: number;
-  maxQty: number;
+  suggestedQty: number;
   onQtyChange: (qty: number) => void;
 };
 
@@ -14,11 +14,11 @@ export default function RequestProductSection({
   options,
   inventoryItem,
   qty,
-  maxQty,
+  suggestedQty,
   onQtyChange,
 }: RequestProductSectionProps) {
   const onHand = inventoryItem?.on_hand ?? null;
-  const setQty = (value: number) => onQtyChange(clampRequestQty(value, maxQty));
+  const setQty = (value: number) => onQtyChange(clampRequestQty(value));
 
   return (
     <SurfaceCard>
@@ -57,13 +57,11 @@ export default function RequestProductSection({
             <input
               type="number"
               min={1}
-              max={maxQty}
               value={qty}
               onChange={(event) => setQty(Number(event.target.value))}
             />
             <Button
               variant="ghost"
-              disabled={qty >= maxQty}
               onClick={() => setQty(qty + 1)}
               aria-label="Increase quantity"
             >
@@ -71,7 +69,7 @@ export default function RequestProductSection({
             </Button>
             <span className="cr-unit">units</span>
           </div>
-          <small className="cr-qty-hint">Max {maxQty} units (predicted shortage)</small>
+          <small className="cr-qty-hint">Suggested {suggestedQty} units (predicted shortage)</small>
         </label>
       </div>
 

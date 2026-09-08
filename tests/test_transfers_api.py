@@ -22,6 +22,7 @@ def _mongo_available() -> bool:
 def client() -> Iterator[TestClient]:
     db = get_db()
     db.stock_transfers.delete_many({})
+    db.purchase_orders.delete_many({})
     with TestClient(app) as test_client:
         yield test_client
     close_client()
@@ -156,7 +157,7 @@ def test_create_transfer_requires_auth(client: TestClient) -> None:
     assert response.status_code == 401
 
 
-def test_create_transfer_qty_capped_at_shortage(client: TestClient) -> None:
+def test_create_transfer_allows_qty_above_shortage(client: TestClient) -> None:
     product_id, marion_id, mile_id, _ = _drill_and_stores()
     cbd = _login(client, "admin.cbd", "cbd123")
     options = client.get(
@@ -167,28 +168,17 @@ def test_create_transfer_qty_capped_at_shortage(client: TestClient) -> None:
     shortage = options.json()["requested_qty"]
     assert shortage >= 1
 
-    too_high = client.post(
-        "/api/v1/transfers",
-        headers=_auth(cbd["token"]),
-        json={
-            "product_id": product_id,
-            "donor_store_ids": [marion_id, mile_id],
-            "qty": shortage + 100000,
-        },
-    )
-    assert too_high.status_code == 400
-
     created = client.post(
         "/api/v1/transfers",
         headers=_auth(cbd["token"]),
         json={
             "product_id": product_id,
             "donor_store_ids": [marion_id, mile_id],
-            "qty": max(1, shortage - 1) if shortage > 1 else 1,
+            "qty": shortage + 25,
         },
     )
     assert created.status_code == 200
-    assert created.json()["qty"] == (shortage - 1 if shortage > 1 else 1)
+    assert created.json()["qty"] == shortage + 25
 
 
 def test_transfer_detail_visible_to_requester(client: TestClient) -> None:
@@ -210,3 +200,50 @@ def test_transfer_detail_visible_to_requester(client: TestClient) -> None:
     assert payload["product_name"]
     assert len(payload["invited"]) == 2
     assert payload["events"][0]["action"] == "REQUESTED"
+
+
+def test_empty_donors_rejected_when_network_stores_exist(client: TestClient) -> None:
+    product_id, _marion_id, _mile_id, _ = _drill_and_stores()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    created = client.post(
+        "/api/v1/transfers",
+        headers=_auth(cbd["token"]),
+        json={"product_id": product_id, "donor_store_ids": []},
+    )
+    assert created.status_code == 400
+
+
+def test_supplier_only_when_no_safe_donors(client: TestClient) -> None:
+    logins = [
+        ("admin.cbd", "cbd123"),
+        ("admin.marion", "marion123"),
+        ("admin.mileend", "mileend123"),
+        ("admin.modbury", "modbury123"),
+    ]
+    db = get_db()
+    products = list(db.products.find())
+    for username, password in logins:
+        session = _login(client, username, password)
+        for product in products:
+            options = client.get(
+                f"/api/v1/me/products/{product['_id']}/request-options",
+                headers=_auth(session["token"]),
+            )
+            if options.status_code != 200:
+                continue
+            payload = options.json()
+            donors = [store for group in payload["nearby_groups"] for store in group["stores"]]
+            if donors or payload.get("supplier") is None:
+                continue
+            created = client.post(
+                "/api/v1/transfers",
+                headers=_auth(session["token"]),
+                json={"product_id": str(product["_id"]), "donor_store_ids": []},
+            )
+            assert created.status_code == 200
+            body = created.json()
+            assert body["invited"] == []
+            assert body.get("note") in (None, "")
+            assert any(alloc["source"] == "supplier" for alloc in body["allocations"])
+            return
+    pytest.skip("Seed has no HIGH product without donor stores")
