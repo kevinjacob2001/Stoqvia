@@ -93,12 +93,14 @@ def search_products(
 def recommend_donor_stores(
     store_id: str,
     product_id: str,
+    min_safe_surplus: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Find nearby stores with backend-verified safe surplus
     for the selected product.
 
-    Works for any product
+    Works for any product. Optionally filter donors to those
+    with at least min_safe_surplus units available.
     """
     options = request_options_service.get_request_options(
         store_id,
@@ -109,6 +111,8 @@ def recommend_donor_stores(
     donors: List[Dict[str, Any]] = []
     for group in options.nearby_groups:
         for donor in group.stores:
+            if min_safe_surplus is not None and donor.safe_surplus < min_safe_surplus:
+                continue
             donors.append(
                 {
                     "store_id": donor.store_id,
@@ -130,6 +134,7 @@ def recommend_donor_stores(
         "sku": options.sku,
         "product_name": options.product_name,
         "requested_qty": options.requested_qty,
+        "min_safe_surplus": min_safe_surplus,
         "total_donor_count": len(donors),
         "returned_donor_count": min(len(donors), maximum_results),
         "truncated": len(donors) > maximum_results,
