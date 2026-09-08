@@ -66,10 +66,14 @@ def _broadcast(client, cbd_token, product_id, donor_ids):
     return r.json()["transfer_id"]
 
 
-def _respond(client, token, transfer_id, action, qty=None):
+def _respond(client, token, transfer_id, action, qty=None, message=None):
     body = {"action": action}
     if qty is not None:
         body["qty"] = qty
+    if action == "DECLINE":
+        body["message"] = message or "Sorry, unable to provide you with stock"
+    elif message is not None:
+        body["message"] = message
     return client.post(
         f"/api/v1/transfers/{transfer_id}/respond",
         headers=_auth(token),
@@ -589,3 +593,45 @@ def test_store_dispatch_then_job_marks_received(client: TestClient) -> None:
     store_done = next(a for a in detail["allocations"] if a["source"] == "store")
     assert store_done["status"] == "COMPLETED"
     assert any(ev["action"] == "RECEIVED" and ev["actor"] == "System" for ev in detail["events"])
+
+
+def test_broadcast_note_and_required_decline_reason(client: TestClient) -> None:
+    product_id, marion_id, _mile_id = _drill_ids()
+    cbd = _login(client, "admin.cbd", "cbd123")
+    created = client.post(
+        "/api/v1/transfers",
+        headers=_auth(cbd["token"]),
+        json={
+            "product_id": product_id,
+            "donor_store_ids": [marion_id],
+            "note": "Need this for Saturday if you can spare it.",
+        },
+    )
+    assert created.status_code == 200
+    assert created.json()["note"] == "Need this for Saturday if you can spare it."
+    tid = created.json()["transfer_id"]
+
+    marion = _login(client, "admin.marion", "marion123")
+    inbox = client.get("/api/v1/transfers", headers=_auth(marion["token"])).json()["incoming"][0]
+    assert inbox["note"] == "Need this for Saturday if you can spare it."
+
+    missing = client.post(
+        f"/api/v1/transfers/{tid}/respond",
+        headers=_auth(marion["token"]),
+        json={"action": "DECLINE"},
+    )
+    assert missing.status_code == 400
+
+    declined = _respond(
+        client,
+        marion["token"],
+        tid,
+        "DECLINE",
+        message="Already promised to a local job.",
+    )
+    assert declined.status_code == 200
+
+    detail = client.get(f"/api/v1/transfers/{tid}", headers=_auth(cbd["token"])).json()
+    invite = next(row for row in detail["invited"] if row["store_id"] == marion_id)
+    assert invite["status"] == "DECLINED"
+    assert invite["decline_reason"] == "Already promised to a local job."
