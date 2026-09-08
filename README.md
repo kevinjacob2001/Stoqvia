@@ -174,3 +174,35 @@ Safety principles:
 
 The Copilot is decision support. Employees still create, accept, and dispatch transfers in the application.
 
+## Machine-learning and forecasting capabilities
+
+LightGBM (or a weekday baseline) **forecasts 7-day unit demand**. Deterministic Python then combines that forecast with inventory to classify risk. The Copilot does not calculate risk, demand, distance, or surplus.
+
+```text
+Usable stock     = max(0, on-hand − reserved)
+Projected stock  = usable stock − 7-day demand
+Shortage         = max(0, 7-day demand + safety stock − usable stock)
+Safe surplus     = max(0, usable stock − 7-day demand − 2 × safety stock)
+```
+
+Risk categories (`backend/app/models/forecast.py`):
+
+
+| Risk   | Rule in code                                               | Plain language                                                        |
+| ------ | ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| HIGH   | Shortage greater than 0                                    | After covering 7-day demand, stock would sit below safety stock       |
+| MEDIUM | No shortage, and projected stock is below 2 × safety stock | Above the safety floor, but close to the buffer                       |
+| LOW    | Projected stock is at least 2 × safety stock               | Comfortably above the buffer; only these stores are offered as donors |
+
+
+Demand model:
+
+- Horizon: 7 days
+- Lookback for the weekday fallback: last 28 days of `sales_daily`
+- Primary method: LightGBM recursive next-day predictions (`FORECAST_MODEL=lightgbm`)
+- Fallback: day-of-week averages (`FORECAST_MODEL=baseline`, or if LightGBM fails)
+- Features: weekday, weekend flag, month, lag 1, lag 7, 7-day rolling mean, store index, product index
+- Training: `python -m ml.train` writes `ml/artifacts/`
+
+Sales in the demo are generated from `data/seed/json/sales_params.json`, not live tills.
+
