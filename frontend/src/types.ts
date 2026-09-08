@@ -78,6 +78,7 @@ export type InviteStatus = {
   store_name: string;
   status: string;
   accepted_qty?: number | null;
+  decline_reason?: string | null;
 };
 
 export type TransferAllocation = {
@@ -116,6 +117,7 @@ export type OutgoingTransfer = {
   completed_at: string | null;
   accepted_store_name: string | null;
   lead_days: number | null;
+  note: string | null;
   events: TransferEvent[];
 };
 
@@ -142,6 +144,7 @@ export type IncomingTransfer = {
   dispatched_at: string | null;
   completed_at: string | null;
   lead_days: number | null;
+  note: string | null;
   events: TransferEvent[];
 };
 
@@ -177,6 +180,7 @@ export type TransferDetail = {
   dispatched_at: string | null;
   completed_at: string | null;
   lead_days: number | null;
+  note: string | null;
   events: TransferEvent[];
   purchase_order: TransferPurchaseOrder | null;
 };
