@@ -28,3 +28,35 @@ That process creates delay and duplicated work:
 
 Stoqvia is designed to reduce hours spent on those calls and that manual coordination. It does not claim a measured time or cost saving; those figures are not in this repository.
 
+## How Stoqvia solves it
+
+The implemented store workflow is:
+
+1. **See the risk.** The Products view shows on-hand, reserved, usable stock, 7-day demand, shortage, and HIGH / MEDIUM / LOW risk.
+2. **Open a request for a HIGH-risk product.** Request options load only when that product is HIGH risk at the signed-in store.
+3. **Choose safe donors.** Only LOW-risk stores with a positive safe surplus are offered, grouped by distance band, with an estimated transfer lead.
+4. **Broadcast one request.** Invite one or more eligible stores, optionally attach a note, and set a quantity (the predicted shortage is the default, not a cap). If no safe donor exists and an approved supplier does, the request can go straight to supplier fulfilment.
+5. **Verify and respond.** Invited stores can check stock (exclusive lock), accept in full or in part up to their safe surplus, or decline with a required reason.
+6. **Dispatch and track.** The requesting store confirms dispatch. Allocations move to in transit with a lead based on distance (store) or supplier lead time (purchase order).
+7. **Escalate leftovers.** When invited stores cannot cover the remainder, Stoqvia creates a supplier purchase order for the leftover quantity, or marks the request declined if no supplier is available.
+8. **Complete.** A background job completes transfers whose lead time has elapsed and records the operational history on the request.
+
+```mermaid
+flowchart TD
+    A["HIGH-risk product or urgent request"] --> B["Check usable stock and 7-day demand"]
+    B --> C["List LOW-risk donors with safe surplus"]
+    C --> D{"Safe donors?"}
+    D -->|Yes| E["Broadcast one request"]
+    D -->|No, supplier exists| F["Supplier-only request"]
+    E --> G["Stores check, accept, or decline"]
+    G --> H{"Need covered?"}
+    H -->|Yes| I["Dispatch and track transfer"]
+    H -->|No| F
+    I --> J["Auto-complete after lead time"]
+    F --> J
+```
+
+
+
+
+
