@@ -29,7 +29,11 @@ def create_transfer(
 ) -> OutgoingTransfer:
     me = auth_service.get_me(token)
     return transfer_service.create_transfer(
-        me.store_id, body.product_id, body.donor_store_ids, qty=body.qty
+        me.store_id,
+        body.product_id,
+        body.donor_store_ids,
+        qty=body.qty,
+        note=body.note,
     )
 
 
