@@ -513,3 +513,18 @@ Gaps to treat as such: inventory and forecast GET routes do not require a token;
 
 Not specified as committed work in this repository. Natural follow-ons from current gaps are authenticating catalogue and forecast reads, adding frontend tests, and expanding the Copilot eval set after prompt changes.
 
+## Demonstration scenario
+
+The quantities below are **illustrative**. Seed risk for a given SKU depends on generated sales and on-hand figures after you run seed and train.
+
+1. A store administrator signs in (for example Adelaide CBD).
+2. Products shows a SKU such as `HW-PT-001` as HIGH risk: 7-day demand plus safety stock exceeds usable inventory.
+3. They open Create Request. Stoqvia lists only LOW-risk donors with safe surplus, by distance band, and an approved supplier if one exists.
+4. Optionally they ask Copilot which nearby stores can donate that SKU. Copilot calls `recommend_donor_stores`; it does not place the request.
+5. They broadcast one request to selected stores (or supplier-only if none are safe), instead of calling each location.
+6. A donor store signs in, checks stock, and accepts some or all of the quantity, or declines with a reason.
+7. The requester dispatches. The request shows in transit until the lead elapses and auto-complete marks it done.
+8. If stores cannot cover the remainder, a supplier purchase order is attached to the same request.
+
+
+
