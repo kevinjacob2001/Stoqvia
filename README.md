@@ -481,3 +481,35 @@ Recommendations support an employee decision. Creating a request, accepting stoc
 
 Gaps to treat as such: inventory and forecast GET routes do not require a token; default `AUTH_SECRET` is a development placeholder; Copilot LangChain packages are not pinned in `requirements.txt`.
 
+## Product status and roadmap
+
+
+
+### Implemented
+
+- Store login and session
+- Inventory and 7-day risk on the Products view
+- HIGH-risk request creation, donor broadcast, notes, and supplier-only path
+- Accept (including partial), decline with reason, stock-check lock, dispatch
+- In-transit tracking and timed auto-complete
+- Supplier purchase-order fallback
+- Transfer detail with event history
+- Read-only Copilot (`search_products`, `recommend_donor_stores`)
+- LightGBM demand model with weekday fallback
+- Pytest suite and frozen Copilot eval harness
+- Docker Compose MongoDB and JSON seed
+
+
+
+### In progress
+
+- Copilot reliability when the product is selected in the UI but not named in the question
+- Stricter Copilot refusals for “how much stock does another store have?” questions
+- Pinning Copilot client libraries in `backend/requirements.txt`
+
+
+
+### Planned
+
+Not specified as committed work in this repository. Natural follow-ons from current gaps are authenticating catalogue and forecast reads, adding frontend tests, and expanding the Copilot eval set after prompt changes.
+
