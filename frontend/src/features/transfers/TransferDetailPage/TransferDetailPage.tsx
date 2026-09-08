@@ -93,6 +93,7 @@ export default function TransferDetailPage({
                   <TransferStatusBadge status={detail.status} />
                 </div>
                 <p className="td-hero-meta">SKU {detail.sku}</p>
+                {detail.note ? <p className="td-hero-summary">Note: {detail.note}</p> : null}
                 <p className="td-hero-summary">{transferStatusSummary(detail)}</p>
               </div>
             </div>
@@ -162,7 +163,9 @@ export default function TransferDetailPage({
                         <small>
                           {invite.accepted_qty != null
                             ? `${invite.accepted_qty} units accepted`
-                            : "No units accepted yet"}
+                            : invite.decline_reason
+                              ? invite.decline_reason
+                              : "No units accepted yet"}
                         </small>
                       </div>
                       <TransferStatusPill status={invite.status} />
