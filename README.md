@@ -285,3 +285,89 @@ stoqvia/
 
 
 
+## Getting started
+
+
+
+### Prerequisites
+
+- Python 3 (a virtualenv is expected under `backend/.venv`)
+- Node.js and npm
+- Docker (for MongoDB)
+- [Ollama](https://ollama.com) and the `qwen2.5:7b` model, if you use Copilot
+- On macOS, LightGBM may need `brew install libomp`
+
+
+
+### Run locally
+
+```bash
+cp .env.example .env
+docker compose up -d
+
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m scripts.init_db --reset
+
+cd ..
+PYTHONPATH=. backend/.venv/bin/python -m data.seed.seed_all
+```
+
+Seed path: JSON in `data/seed/json/` → MongoDB. `sales_daily.jsonl` is generated from `sales_params.json` during seed.
+
+```bash
+# API (from backend/)
+cd backend
+uvicorn app.main:app --reload --app-dir .
+
+# Optional: train LightGBM (from repo root)
+# Fallback without the model: FORECAST_MODEL=baseline
+PYTHONPATH=.:backend backend/.venv/bin/python -m ml.train
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+- Store console: [http://localhost:5173](http://localhost:5173)
+- OpenAPI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- Health: [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
+
+
+
+### Demo logins
+
+These usernames are seed data for the local demonstration, not production secrets.
+
+
+| Store        | Username        | Password     |
+| ------------ | --------------- | ------------ |
+| Adelaide CBD | `admin.cbd`     | `cbd123`     |
+| Marion       | `admin.marion`  | `marion123`  |
+| Mile End     | `admin.mileend` | `mileend123` |
+| Modbury      | `admin.modbury` | `modbury123` |
+
+
+Example catalogue SKU: `HW-PT-001` (Cordless Drill). After a reseed, sign in again so tokens stay valid.
+
+### Seed collections
+
+
+| Collection          | Source                                       |
+| ------------------- | -------------------------------------------- |
+| `products`          | `products.json`                              |
+| `stores`            | `stores.json`                                |
+| `inventory`         | `inventory.json`                             |
+| `sales_daily`       | `sales_daily.jsonl` (built on seed)          |
+| `suppliers`         | `suppliers.json`                             |
+| `supplier_products` | `supplier_products.json`                     |
+| `purchase_orders`   | `purchase_orders.json`                       |
+| `stock_transfers`   | `stock_transfers.json`                       |
+| `store_users`       | `store_users.json` (password hashed on load) |
+
+
+
+
