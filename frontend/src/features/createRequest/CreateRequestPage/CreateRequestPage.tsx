@@ -14,7 +14,7 @@ export type CreateRequestPageProps = {
   sending: boolean;
   sendError: string | null;
   onCancel: () => void;
-  onBroadcast: (storeIds: string[], qty: number) => void;
+  onBroadcast: (storeIds: string[], qty: number, note?: string) => void;
 };
 
 export default function CreateRequestPage({
@@ -29,11 +29,13 @@ export default function CreateRequestPage({
   const stores = useMemo(() => flattenDonors(options.nearby_groups), [options.nearby_groups]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [qty, setQty] = useState(() => clampRequestQty(options.requested_qty, maxQty));
+  const [note, setNote] = useState("");
   const [confirmBroadcast, setConfirmBroadcast] = useState(false);
 
   useEffect(() => {
     setSelectedIds([]);
     setQty(clampRequestQty(options.requested_qty, Math.max(1, options.requested_qty)));
+    setNote("");
   }, [options.product_id, options.requested_qty, stores]);
 
   const selectedStores = stores.filter((store) => selectedIds.includes(store.store_id));
@@ -79,6 +81,17 @@ export default function CreateRequestPage({
             supplierRemainder={supplierRemainder}
             selectedStoreCount={storeCount}
           />
+
+          <label className="cr-note">
+            Message to invited stores (optional)
+            <textarea
+              rows={3}
+              maxLength={500}
+              value={note}
+              placeholder="e.g. Need this for a Saturday docket — 20 units is enough if you cannot cover the full amount."
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </label>
 
           {sendError ? <p className="error">{sendError}</p> : null}
 
@@ -126,7 +139,7 @@ export default function CreateRequestPage({
         busy={sending}
         onCancel={() => setConfirmBroadcast(false)}
         onConfirm={() => {
-          onBroadcast(selectedIds, qty);
+          onBroadcast(selectedIds, qty, note.trim() || undefined);
           setConfirmBroadcast(false);
         }}
       />
