@@ -465,3 +465,19 @@ A recorded live run is stored in `evals/copilot/copilot_results.json` (`qwen2.5:
 
 Latency is bounded by `COPILOT_TIMEOUT_SECONDS`; timeouts surface as Copilot errors, not as a separate latency dashboard.
 
+## Security and responsible AI
+
+Implemented:
+
+- Login required for Copilot, transfers, and request options
+- PBKDF2 password verification; HMAC-signed tokens (not a third-party JWT library)
+- Store context taken from the token, not from the model
+- Pydantic validation on requests
+- Copilot allowlist, untrusted user text, and `[OUT_OF_SCOPE]` / `[CLARIFY]` prefixes
+- Timeouts and exception logging on Copilot
+- Secrets intended via environment variables (`AUTH_SECRET`, `MONGO_URI`)
+
+Recommendations support an employee decision. Creating a request, accepting stock, and dispatching remain explicit API actions.
+
+Gaps to treat as such: inventory and forecast GET routes do not require a token; default `AUTH_SECRET` is a development placeholder; Copilot LangChain packages are not pinned in `requirements.txt`.
+
