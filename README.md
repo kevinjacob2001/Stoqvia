@@ -371,3 +371,31 @@ Example catalogue SKU: `HW-PT-001` (Cordless Drill). After a reseed, sign in aga
 
 
 
+## Environment configuration
+
+Values below match `backend/app/config.py`, `.env.example`, and Copilot `os.getenv` defaults. Do not commit real secrets; replace `AUTH_SECRET` outside local demo use.
+
+
+| Variable                         | Purpose                                           | Example / default                 | Required              |
+| -------------------------------- | ------------------------------------------------- | --------------------------------- | --------------------- |
+| `APP_NAME`                       | API title                                         | `Retail Inventory Copilot`        | No                    |
+| `APP_ENV`                        | Environment label on `/health`                    | `development`                     | No                    |
+| `API_PREFIX`                     | Route prefix                                      | `/api/v1`                         | No                    |
+| `MONGO_URI`                      | MongoDB connection                                | `mongodb://localhost:27017`       | Yes for a running API |
+| `MONGO_DB`                       | Database name                                     | `retail_inventory_copilot`        | No                    |
+| `CORS_ORIGINS`                   | Allowed browser origins                           | Vite `localhost:5173`             | No                    |
+| `FORECAST_MODEL`                 | `lightgbm` or `baseline`                          | `lightgbm`                        | No                    |
+| `AUTH_SECRET`                    | HMAC key for session tokens                       | Dev placeholder in `.env.example` | Yes beyond demo       |
+| `AUTH_TOKEN_HOURS`               | Token lifetime                                    | `12`                              | No                    |
+| `AUTO_COMPLETE_INTERVAL_SECONDS` | Completion sweep; `0` disables                    | `30`                              | No                    |
+| `SUPPLIER_LEAD_MINUTES`          | Test override for supplier transit; `0` uses days | `0`                               | No                    |
+| `SEED_RANDOM_SEED`               | Seed generation                                   | `42`                              | No                    |
+| `COPILOT_ENABLED`                | Copilot kill switch                               | `true`                            | No                    |
+| `COPILOT_MODEL`                  | Ollama model name                                 | `qwen2.5:7b`                      | No                    |
+| `COPILOT_BASE_URL`               | Ollama host                                       | `http://localhost:11434`          | No                    |
+| `COPILOT_TIMEOUT_SECONDS`        | LLM / tool timeout                                | `20`                              | No                    |
+| `COPILOT_PROMPT_VERSION`         | Logged prompt label                               | `v1`                              | No                    |
+
+
+Copilot variables are read in application code and are not in `.env.example`.
+
