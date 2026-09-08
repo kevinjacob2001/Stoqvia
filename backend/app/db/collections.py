@@ -216,6 +216,7 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                             "store_id": _object_id(),
                             "status": _string(),
                             "accepted_qty": _int_min(1),
+                            "decline_reason": _string(),
                         },
                         "additionalProperties": False,
                     },
@@ -248,6 +249,7 @@ COLLECTION_VALIDATORS: dict[str, dict[str, Any]] = {
                 "completed_at": _date(),
                 "lead_days": _int_min(0),
                 "po_id": _object_id(),
+                "note": _string(),
                 "events": {
                     "bsonType": "array",
                     "items": {
