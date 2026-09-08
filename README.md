@@ -76,3 +76,59 @@ flowchart TD
 
 
 
+## Key capabilities
+
+
+
+### Inventory intelligence
+
+- Store product catalogue with on-hand, reserved, usable, and safety stock
+- Usable stock calculated as on-hand minus reserved (floored at zero)
+- 7-day demand forecast per store and product
+- Shortage and HIGH / MEDIUM / LOW risk on the Products view
+- Copilot product search by name, SKU, category, or risk at the authenticated store
+
+
+
+### Inter-store coordination
+
+- Create-request screen for HIGH-risk products
+- Broadcast to selected eligible stores, with an optional note (up to 500 characters)
+- Sent and received request lists, plus accepted, in-transit, declined, and sent-history views
+- Exclusive stock-check lock so two stores do not verify the same invite at once
+- Full or partial accept, capped at remaining need and the donor’s safe surplus
+- Decline requires a reason, shown on the request
+- Request-level event history (who did what, and when)
+
+
+
+### Fulfilment and transfers
+
+- Donor comparison by distance band (under 15 km, 15–30 km, over 30 km) and transfer lead (1, 2, or 3 days)
+- Requester dispatch after a store acceptance
+- In-transit tracking until lead time elapses
+- Detail view of invites, allocations, notes, declines, and any linked purchase order
+- One active fulfilment at a time per store and product (open, fulfilled, or in transit)
+
+
+
+### Supplier fallback
+
+- Approved-supplier option on the request screen when stores cannot cover the need
+- Supplier-only request when there are no safe donors
+- Automatic purchase order for remaining quantity after invites are exhausted
+- Purchase-order status on the transfer detail (including received when the supplier lead completes)
+
+
+
+### Governance and control
+
+- Store-admin login with HMAC-signed session tokens (default 12-hour expiry)
+- Copilot and transfer APIs bind to the authenticated store; the model cannot choose another store’s identity
+- Read-only Copilot tools and a fixed tool allowlist
+- MongoDB JSON Schema validators on core collections
+- Transfer event log for operational actions
+- Copilot request logging (model, prompt version, tool name, duration)
+
+**Not in this repository:** push notifications, enterprise identity providers, multi-role permissions beyond store admin, and authenticated access on catalogue/forecast GET routes (those reads are currently open).
+
