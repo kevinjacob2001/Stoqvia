@@ -218,3 +218,25 @@ Staff can also trigger the same sweep with `POST /api/v1/transfers/jobs/complete
 
 Automated: due-transfer completion. AI-assisted: Copilot recommendations. Employee-approved: create, respond, and dispatch.
 
+## System architecture
+
+The store console talks to FastAPI under `/api/v1`. Vite on port 5173 proxies `/api` to `http://127.0.0.1:8000`. MongoDB holds catalogue, inventory, sales, users, transfers, and purchase orders. Forecasting reads `sales_daily` and inventory. Copilot calls Ollama, then Python tools. The auto-complete job runs inside the API process.
+
+```mermaid
+flowchart LR
+    UI["React store console"] --> API["FastAPI /api/v1"]
+    API --> Mongo["MongoDB"]
+    API --> Forecast["Forecast service"]
+    Forecast --> LGBM["LightGBM or weekday baseline"]
+    API --> Copilot["Copilot router"]
+    Copilot --> Ollama["Ollama qwen2.5:7b"]
+    Copilot --> Tools["Read-only Python tools"]
+    Tools --> Forecast
+    API --> Job["Auto-complete job"]
+    Job --> Mongo
+```
+
+
+
+
+
