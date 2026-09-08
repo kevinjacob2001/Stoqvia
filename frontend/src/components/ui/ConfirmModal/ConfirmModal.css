@@ -43,7 +43,8 @@
   font-weight: 600;
 }
 
-.confirm-field input[type="number"] {
+.confirm-field input[type="number"],
+.confirm-field textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
@@ -51,7 +52,17 @@
   background: #fff;
   font: inherit;
   font-weight: 500;
+}
+
+.confirm-field input[type="number"] {
   max-width: 140px;
+}
+
+.confirm-field textarea {
+  resize: vertical;
+  min-height: 72px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .confirm-error {
