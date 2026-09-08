@@ -32,12 +32,15 @@ class CreateTransferRequest(BaseModel):
     donor_store_ids: List[str] = Field(min_length=1)
     # Optional; defaults to predicted shortage. Must be between 1 and shortage.
     qty: Optional[int] = Field(default=None, ge=1)
+    note: Optional[str] = Field(default=None, max_length=500)
 
 
 class RespondToTransferRequest(BaseModel):
     action: RespondAction
     # Required for ACCEPT when fulfilling a partial amount; omit to accept all remaining.
     qty: Optional[int] = Field(default=None, ge=1)
+    # Required when action is DECLINE; ignored otherwise.
+    message: Optional[str] = Field(default=None, max_length=500)
 
 
 class InviteStatus(BaseModel):
@@ -45,6 +48,7 @@ class InviteStatus(BaseModel):
     store_name: str
     status: str
     accepted_qty: Optional[int] = None
+    decline_reason: Optional[str] = None
 
 
 class TransferAllocation(BaseModel):
@@ -84,6 +88,7 @@ class OutgoingTransfer(BaseModel):
     completed_at: Optional[datetime] = None
     accepted_store_name: Optional[str] = None
     lead_days: Optional[int] = None
+    note: Optional[str] = None
     events: List[TransferEvent] = Field(default_factory=list)
 
 
@@ -112,6 +117,7 @@ class IncomingTransfer(BaseModel):
     dispatched_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     lead_days: Optional[int] = None
+    note: Optional[str] = None
     events: List[TransferEvent] = Field(default_factory=list)
 
 
@@ -147,5 +153,6 @@ class TransferDetail(BaseModel):
     dispatched_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     lead_days: Optional[int] = None
+    note: Optional[str] = None
     events: List[TransferEvent] = Field(default_factory=list)
     purchase_order: Optional[TransferPurchaseOrder] = None
