@@ -336,3 +336,23 @@
   .cr-layout { grid-template-columns: 1fr; }
   .cr-sidebar { position: static; }
 }
+
+.cr-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cr-note textarea {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  resize: vertical;
+  min-height: 72px;
+}
