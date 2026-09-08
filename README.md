@@ -16,6 +16,8 @@ The current repository is a working four-store Adelaide demonstration (Adelaide 
 
 Inter-store replenishment often still runs on phone calls and local knowledge. When a store is short, an employee typically checks their own system, then calls other locations, waits for someone to confirm stock, records who said yes or no, and follows up on whether stock actually moved. If no store can help, they start a separate supplier conversation.
 
+![Store manager overwhelmed by phone calls, conflicting stock lists, and follow-up notes](./images/stoqvia-manager-problem.jpg)
+
 That process creates delay and duplicated work:
 
 - Inventory truth is split across stores, so donor discovery is slow.
@@ -29,6 +31,8 @@ That process creates delay and duplicated work:
 Stoqvia is designed to reduce hours spent on those calls and that manual coordination. It does not claim a measured time or cost saving; those figures are not in this repository.
 
 ## How Stoqvia solves it
+
+![Store manager using Stoqvia: detect risk, find safe donors, broadcast one request, track transfer](./images/stoqvia-manager-approved.jpg)
 
 The implemented store workflow is:
 
@@ -268,6 +272,7 @@ stoqvia/
 ├── ml/                      LightGBM training and artifacts
 ├── evals/copilot/           Frozen Copilot cases, scorer, live runner
 ├── tests/                   Pytest suite
+├── images/                  README product illustrations
 ├── docker-compose.yml       Local MongoDB
 └── .env.example             Backend environment template
 ```
