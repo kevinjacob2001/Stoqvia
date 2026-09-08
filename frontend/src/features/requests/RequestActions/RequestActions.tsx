@@ -9,7 +9,7 @@ type RequestActionsProps = {
   safeSurplus: number;
   busy: boolean;
   lockedByOtherReview?: boolean;
-  onRespond: (action: RespondAction, qty?: number) => void;
+  onRespond: (action: RespondAction, qty?: number, message?: string) => void;
 };
 
 type PendingAction = "ACCEPT" | "DECLINE" | "CHECK_STOCK" | "CLEAR_CHECK" | null;
@@ -28,6 +28,8 @@ export default function RequestActions({
   const [pending, setPending] = useState<PendingAction>(null);
   const [acceptQty, setAcceptQty] = useState(Math.max(1, maxAcceptQty));
   const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declineError, setDeclineError] = useState<string | null>(null);
 
   function openAccept() {
     if (maxAcceptQty < 1) {
@@ -54,6 +56,18 @@ export default function RequestActions({
       setPending(null);
       return;
     }
+    if (pending === "DECLINE") {
+      const reason = declineReason.trim();
+      if (!reason) {
+        setDeclineError("Tell the requesting store why you cannot send stock.");
+        return;
+      }
+      onRespond("DECLINE", undefined, reason);
+      setPending(null);
+      setDeclineReason("");
+      setDeclineError(null);
+      return;
+    }
     if (pending) {
       onRespond(pending);
       setPending(null);
@@ -71,7 +85,11 @@ export default function RequestActions({
       <Button disabled={actionsDisabled} onClick={() => setPending(reviewAction)}>
         {reviewing ? "Clear review" : "Review stock"}
       </Button>
-      <Button variant="danger" disabled={actionsDisabled} onClick={() => setPending("DECLINE")}>
+      <Button variant="danger" disabled={actionsDisabled} onClick={() => {
+        setDeclineReason("");
+        setDeclineError(null);
+        setPending("DECLINE");
+      }}>
         Decline
       </Button>
 
@@ -134,13 +152,28 @@ export default function RequestActions({
       <ConfirmModal
         open={pending === "DECLINE"}
         title="Decline this request?"
-        message={<p>You will not send stock for this request. This cannot be undone from the list.</p>}
+        message={<p>The requesting store will see your reason. This cannot be undone from the list.</p>}
         confirmLabel="Decline"
         tone="danger"
         busy={busy}
         onCancel={() => setPending(null)}
         onConfirm={confirmPending}
-      />
+      >
+        <label className="confirm-field">
+          Reason for the requesting store
+          <textarea
+            rows={3}
+            maxLength={500}
+            value={declineReason}
+            placeholder="e.g. Stock is already promised to a local job this week."
+            onChange={(event) => {
+              setDeclineReason(event.target.value);
+              setDeclineError(null);
+            }}
+          />
+        </label>
+        {declineError ? <p className="confirm-error">{declineError}</p> : null}
+      </ConfirmModal>
     </>
   );
 }
