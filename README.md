@@ -528,3 +528,8 @@ The quantities below are **illustrative**. Seed risk for a given SKU depends on 
 
 
 
+## Author
+
+Developed by Kevin Jacob, Adelaide, SA.
+
+No licence file is present in this repository.
