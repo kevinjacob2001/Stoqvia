@@ -258,3 +258,30 @@ flowchart LR
 
 Copilot Python packages (`langchain-ollama` / `langchain-core`) are imported by the Copilot service and are not listed in `backend/requirements.txt`. Install them in the backend virtualenv if you enable Copilot.
 
+## Repository structure
+
+```text
+stoqvia/
+├── backend/                 API, services, jobs, Copilot, DB validators
+├── frontend/                Store console (Vite + React)
+├── data/seed/               JSON seed data and Mongo loaders
+├── ml/                      LightGBM training and artifacts
+├── evals/copilot/           Frozen Copilot cases, scorer, live runner
+├── tests/                   Pytest suite
+├── docker-compose.yml       Local MongoDB
+└── .env.example             Backend environment template
+```
+
+
+| Path                     | Responsibility                                |
+| ------------------------ | --------------------------------------------- |
+| `backend/app/routers/`   | HTTP routes                                   |
+| `backend/app/services/`  | Auth, inventory, forecast, transfers, Copilot |
+| `backend/app/tools/`     | Allowlisted Copilot tools                     |
+| `backend/app/jobs/`      | Due-transfer completion loop                  |
+| `frontend/src/features/` | Products, requests, transfers, Copilot UI     |
+| `evals/copilot/`         | Tool-choice evaluation                        |
+
+
+
+
