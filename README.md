@@ -399,3 +399,31 @@ Values below match `backend/app/config.py`, `.env.example`, and Copilot `os.gete
 
 Copilot variables are read in application code and are not in `.env.example`.
 
+## API overview
+
+Interactive documentation: `/docs`. Prefix every path with `/api/v1`.
+
+
+| Group           | Method and path                                          | Auth   |
+| --------------- | -------------------------------------------------------- | ------ |
+| System          | `GET /health`                                            | No     |
+| Authentication  | `POST /auth/login`                                       | No     |
+| Authentication  | `GET /auth/me`                                           | Bearer |
+| Inventory       | `GET /stores`                                            | No     |
+| Inventory       | `GET /stores/{store_id}/inventory`                       | No     |
+| Inventory       | `GET /stores/{store_id}/products/{product_id}/inventory` | No     |
+| Inventory       | `GET /products/{product_id}/network-inventory`           | No     |
+| Forecast        | `GET /forecast/{store_id}/{product_id}`                  | No     |
+| Forecast        | `GET /stores/{store_id}/forecasts`                       | No     |
+| Request options | `GET /me/products/{product_id}/request-options`          | Bearer |
+| Transfers       | `GET /transfers`                                         | Bearer |
+| Transfers       | `POST /transfers`                                        | Bearer |
+| Transfers       | `GET /transfers/{transfer_id}`                           | Bearer |
+| Transfers       | `POST /transfers/{transfer_id}/respond`                  | Bearer |
+| Transfers       | `POST /transfers/{transfer_id}/dispatch`                 | Bearer |
+| Transfers       | `POST /transfers/jobs/complete-due`                      | Bearer |
+| Copilot         | `POST /copilot/chat`                                     | Bearer |
+
+
+There is no separate suppliers router. Supplier options appear on request-options and as purchase orders on a transfer.
+
