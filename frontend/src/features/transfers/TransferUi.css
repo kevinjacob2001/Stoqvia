@@ -147,6 +147,43 @@
   font-size: 0.86rem;
 }
 
+.td-note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.td-note-list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.td-note-list strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.td-note-list small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.td-note-list p {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
 .td-id {
   margin: 2px 0 0;
   color: var(--muted);

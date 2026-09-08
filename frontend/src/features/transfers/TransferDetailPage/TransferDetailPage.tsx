@@ -64,6 +64,35 @@ function fulfilledOtherLabel(count: number): string {
   return `${count} store${count === 1 ? "" : "s"}`;
 }
 
+type TransferNote = {
+  key: string;
+  from: string;
+  label: string;
+  text: string;
+};
+
+function transferNotes(detail: TransferDetail): TransferNote[] {
+  const notes: TransferNote[] = [];
+  if (detail.note) {
+    notes.push({
+      key: "broadcast",
+      from: detail.requester_store_name,
+      label: "Request note",
+      text: detail.note,
+    });
+  }
+  for (const invite of detail.invited) {
+    if (!invite.decline_reason) continue;
+    notes.push({
+      key: `decline-${invite.store_id}`,
+      from: invite.store_name,
+      label: "Decline reason",
+      text: invite.decline_reason,
+    });
+  }
+  return notes;
+}
+
 export default function TransferDetailPage({
   detail,
   loading,
@@ -71,6 +100,7 @@ export default function TransferDetailPage({
   onClose,
   onNavigate,
 }: TransferDetailPageProps) {
+  const notes = detail ? transferNotes(detail) : [];
   return (
     <div className="transfer-detail-page">
       <PageHeader
@@ -93,7 +123,6 @@ export default function TransferDetailPage({
                   <TransferStatusBadge status={detail.status} />
                 </div>
                 <p className="td-hero-meta">SKU {detail.sku}</p>
-                {detail.note ? <p className="td-hero-summary">Note: {detail.note}</p> : null}
                 <p className="td-hero-summary">{transferStatusSummary(detail)}</p>
               </div>
             </div>
@@ -144,6 +173,27 @@ export default function TransferDetailPage({
               />
             )}
           </SurfaceCard>
+
+          {notes.length > 0 ? (
+            <TransferExpandSection
+              title="Notes"
+              summary={`${notes.length} message${notes.length === 1 ? "" : "s"}`}
+              defaultOpen
+            >
+              <ul className="td-note-list">
+                {notes.map((note) => (
+                  <li key={note.key}>
+                    <Avatar name={note.from} title="" />
+                    <div>
+                      <strong>{note.from}</strong>
+                      <small>{note.label}</small>
+                      <p>{note.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </TransferExpandSection>
+          ) : null}
 
           {detail.is_requester ? (
             <TransferExpandSection
