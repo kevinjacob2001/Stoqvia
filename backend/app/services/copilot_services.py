@@ -4,7 +4,7 @@ import asyncio
 import logging
 import os
 from time import perf_counter
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_core.messages import (
     HumanMessage,
@@ -18,6 +18,7 @@ from app.models.copilot import (
     SuggestedAction,
     ToolSelection,
 )
+from app.services import product_service
 from app.tools.copilot_tools import (
     COPILOT_TOOLS,
     COPILOT_TOOLS_BY_NAME,
@@ -27,13 +28,13 @@ from app.tools.copilot_tools import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------
 # 1. CONFIGURATION
 
 COPILOT_ENABLED = (
     os.getenv("COPILOT_ENABLED", "true").lower()
     == "true"
 )
+
 
 COPILOT_MODEL = os.getenv(
     "COPILOT_MODEL",
@@ -55,7 +56,6 @@ COPILOT_PROMPT_VERSION = os.getenv(
 )
 
 
-# ---------------------------------------------------------
 # 2. SYSTEM PROMPT
 
 SYSTEM_PROMPT = """
@@ -72,18 +72,22 @@ Products can be searched or filtered by:
 - Category
 - HIGH, MEDIUM or LOW inventory risk
 
-2. Recommend safe donor stores for a selected product.
+2. Recommend safe donor stores for a product.
 
 Tool rules:
 
 - For a supported question, call exactly one approved tool.
 - Use search_products for all product-search questions.
-- Use recommend_donor_stores only when the manager asks
-  for donor or fulfilment options.
+- Use recommend_donor_stores when the manager asks for donor
+  or fulfilment options for a product.
+- For recommend_donor_stores, pass sku when the manager names
+  a SKU (for example HW-BM-017). Pass min_safe_surplus when
+  they ask for a minimum quantity (for example at least 40).
 - Use only arguments defined by the selected tool.
 - Never invent tool names or unsupported arguments.
-- If a selected product is required but missing, ask the
-  manager to select a product.
+- If neither a UI-selected product nor a SKU is available for
+  donor lookup, ask the manager to select a product or name
+  a SKU.
 
 Safety rules:
 
@@ -109,7 +113,6 @@ Response rules:
 """.strip()
 
 
-# ---------------------------------------------------------
 # 3. OLLAMA MODEL AND TOOLS
 
 llm = ChatOllama(
@@ -118,13 +121,13 @@ llm = ChatOllama(
     temperature=0,
 )
 
+
 copilot_llm = llm.bind_tools(
     COPILOT_TOOLS,
     tool_choice="auto",
 )
 
 
-# ---------------------------------------------------------
 # 4. PARSE THE MODEL RESPONSE
 
 def parse_tool_selection(
@@ -135,6 +138,8 @@ def parse_tool_selection(
     """
 
     tool_calls = response.tool_calls or []
+
+
 
     if len(tool_calls) > 1:
         raise ValueError(
@@ -188,14 +193,83 @@ def parse_tool_selection(
     )
 
 
-# ---------------------------------------------------------
 # 5. ENFORCE TRUSTED ARGUMENTS
-# ---------------------------------------------------------
+
+
+def _coerce_positive_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 1 else None
+
+
+def _sku_not_found_message(sku: str) -> str:
+    label = product_service.normalize_sku(sku)
+    return (
+        f"I couldn't find a product matching SKU {label}. "
+        "Please verify the SKU or select a product."
+    )
+
+
+def _resolve_donor_product_id(
+    selected_product_id: Optional[str],
+    model_args: Dict[str, Any],
+    user_message: Optional[str],
+) -> Tuple[Optional[str], Optional[str], Optional[ToolSelection]]:
+    """
+    Resolve product_id for donor lookup from UI context, tool
+    args, or the manager's message. Returns (product_id, sku, error).
+    """
+    if selected_product_id:
+        return selected_product_id, None, None
+
+    sku_candidates: List[str] = []
+    model_sku = model_args.get("sku")
+    if isinstance(model_sku, str) and model_sku.strip():
+        sku_candidates.append(model_sku.strip())
+
+    if user_message:
+        extracted = product_service.extract_sku_from_message(user_message)
+        if extracted:
+            sku_candidates.append(extracted)
+
+    seen: set[str] = set()
+    for raw_sku in sku_candidates:
+        normalized = product_service.normalize_sku(raw_sku)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        # print(seen,"seen")
+
+        product = product_service.get_product_by_sku(normalized)
+        if product is not None:
+            # print((str(product["_id"]), normalized, None),'str(product["_id"]), normalized, Nonestr(product["_id"]), normalized, None')
+            return str(product["_id"]), normalized, None
+        
+        return None, normalized, ToolSelection(
+            status="CLARIFICATION_REQUIRED",
+            tool_name="recommend_donor_stores",
+            message=_sku_not_found_message(normalized),
+        )
+
+    return None, None, ToolSelection(
+        status="CLARIFICATION_REQUIRED",
+        tool_name="recommend_donor_stores",
+        message=(
+            "Please select a product first, or include a SKU "
+            "such as HW-PT-001 in your question."
+        ),
+    )
+
 
 def enforce_trusted_arguments(
     selection: ToolSelection,
     authenticated_store_id: str,
     selected_product_id: Optional[str],
+    user_message: Optional[str] = None,
 ) -> ToolSelection:
     """
     Replace model-generated identity arguments with trusted
@@ -223,17 +297,29 @@ def enforce_trusted_arguments(
         selection.tool_name
         == "recommend_donor_stores"
     ):
-        if not selected_product_id:
-            return ToolSelection(
-                status="CLARIFICATION_REQUIRED",
-                tool_name="recommend_donor_stores",
-                message="Please select a product first.",
+        model_args = selection.tool_args
+        product_id, _, error = _resolve_donor_product_id(
+            selected_product_id,
+            model_args,
+            user_message,
+        )
+        if error is not None:
+            return error
+
+        min_safe_surplus = _coerce_positive_int(
+            model_args.get("min_safe_surplus")
+        )
+        if min_safe_surplus is None:
+            min_safe_surplus = _coerce_positive_int(
+                model_args.get("required_quantity")
             )
 
-        safe_args = {
+        safe_args: Dict[str, Any] = {
             "store_id": authenticated_store_id,
-            "product_id": selected_product_id,
+            "product_id": product_id,
         }
+        if min_safe_surplus is not None:
+            safe_args["min_safe_surplus"] = min_safe_surplus
 
         return selection.model_copy(
             update={"tool_args": safe_args}
@@ -244,7 +330,8 @@ def enforce_trusted_arguments(
     )
 
 
-# ---------------------------------------------------------
+
+
 # 6. ASK QWEN TO SELECT A TOOL
 
 async def choose_copilot_tool(
@@ -286,17 +373,17 @@ this trusted application context.
     )
 
     selection = parse_tool_selection(response)
-
+    # print(selected_product_id,"selected_product_idselected_product_idselected_product_id")
     return enforce_trusted_arguments(
         selection=selection,
         authenticated_store_id=(
             authenticated_store_id
         ),
         selected_product_id=selected_product_id,
+        user_message=message,
     )
 
 
-# ---------------------------------------------------------
 # 7. EXECUTE THE APPROVED TOOL
 
 async def execute_copilot_tool(
@@ -340,7 +427,6 @@ async def execute_copilot_tool(
     return result
 
 
-# ---------------------------------------------------------
 # 8. FORMAT GROUNDED RESPONSES
 
 def format_copilot_result(
@@ -381,21 +467,29 @@ def format_copilot_result(
         product_id = str(
             result.get("product_id", "")
         )
+        sku = str(result.get("sku", ""))
+        min_safe_surplus = result.get("min_safe_surplus")
+
+        if min_safe_surplus:
+            message = (
+                f"Found {count} donor stores with at least "
+                f"{min_safe_surplus} units of {sku}."
+            )
+        else:
+            message = f"Found {count} safe donor stores for {sku}."
 
         return CopilotResponse(
             status="SUCCESS",
             intent=CopilotIntent.RECOMMEND_DONORS,
-            message=(
-                f"Found {count} safe donor stores."
-            ),
+            message=message,
             data=result,
             suggested_actions=[
                 SuggestedAction(
                     type="NAVIGATE",
                     label="View fulfilment options",
                     path=(
-                        "/requests/create"
-                        f"?productId={product_id}"
+                        "/request"
+                        f"?product={product_id}"
                     ),
                 )
             ],
@@ -406,7 +500,6 @@ def format_copilot_result(
     )
 
 
-# ---------------------------------------------------------
 # 9. RUN THE COMPLETE COPILOT WORKFLOW
 
 async def run_copilot(
