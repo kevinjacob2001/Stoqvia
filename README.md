@@ -240,3 +240,21 @@ flowchart LR
 
 
 
+## Technology stack
+
+
+| Area             | Technology                                                    |
+| ---------------- | ------------------------------------------------------------- |
+| Frontend         | React 19, TypeScript, Vite 6                                  |
+| Backend          | FastAPI 0.115, Uvicorn, Pydantic v2                           |
+| Database         | MongoDB 7 (Docker Compose), PyMongo                           |
+| Authentication   | PBKDF2 password hashes, HMAC-SHA256 session tokens            |
+| AI orchestration | LangChain tool binding (`ChatOllama`, `langchain_core.tools`) |
+| Language model   | Qwen 2.5 7B hosted by Ollama                                  |
+| Machine learning | LightGBM 4.6, NumPy                                           |
+| Testing          | Pytest 8                                                      |
+| Infrastructure   | Docker Compose for MongoDB only                               |
+
+
+Copilot Python packages (`langchain-ollama` / `langchain-core`) are imported by the Copilot service and are not listed in `backend/requirements.txt`. Install them in the backend virtualenv if you enable Copilot.
+
