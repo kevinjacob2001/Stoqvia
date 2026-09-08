@@ -427,3 +427,41 @@ Interactive documentation: `/docs`. Prefix every path with `/api/v1`.
 
 There is no separate suppliers router. Supplier options appear on request-options and as purchase orders on a transfer.
 
+## Testing and evaluation
+
+
+
+### Software tests
+
+From the repository root (MongoDB required for API tests):
+
+```bash
+backend/.venv/bin/python -m pytest
+```
+
+Coverage includes auth, inventory, forecasts, LightGBM features, geo bands, request options, transfer create/respond/dispatch, Copilot SKU handling, and Copilot parser/guardrail evals.
+
+There is **no frontend test script** in `frontend/package.json`. Frontend checks in this repo are `npm run build` (TypeScript plus Vite production build).
+
+### Copilot evaluation
+
+Frozen cases live in `evals/copilot/copilot_cases.json`. Dimensions covered:
+
+- Tool choice (search vs donor recommendation)
+- Argument validity (SKU, `min_safe_surplus`)
+- Clarification and out-of-scope refusals
+- Prompt-injection and store-spoofing (trusted store ID must win)
+- Hallucination-style questions that must not invent another store’s on-hand stock
+
+Offline parser and trusted-argument tests run with the default pytest suite and do not call Ollama.
+
+Live scoring against local Ollama:
+
+```bash
+COPILOT_EVAL=1 PYTHONPATH=.:backend backend/.venv/bin/python evals/copilot/run_copilot_eval.py
+```
+
+A recorded live run is stored in `evals/copilot/copilot_results.json` (`qwen2.5:7b`, prompt `v1`): **12 of 16 cases (75%)**. Failures were vague “this product” donor questions and a Marion on-hand question that returned clarification instead of out-of-scope. That snapshot will go stale when the prompt or model changes; re-run the command above to refresh it.
+
+Latency is bounded by `COPILOT_TIMEOUT_SECONDS`; timeouts surface as Copilot errors, not as a separate latency dashboard.
+
