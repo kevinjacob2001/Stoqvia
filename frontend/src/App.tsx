@@ -231,10 +231,10 @@ export default function App() {
     setView("inventory");
   }
 
-  function handleRespond(transferId: string, action: RespondAction, qty?: number) {
+  function handleRespond(transferId: string, action: RespondAction, qty?: number, message?: string) {
     setRespondError(null);
     setResponding(transferId);
-    respondToTransfer(transferId, action, qty)
+    respondToTransfer(transferId, action, qty, message)
       .then(() => setReloadKey((key) => key + 1))
       .catch((err: Error) => setRespondError(err.message))
       .finally(() => setResponding(null));
@@ -249,13 +249,13 @@ export default function App() {
       .finally(() => setDispatching(null));
   }
 
-  function handleSendTransfer(storeIds: string[], qty: number) {
+  function handleSendTransfer(storeIds: string[], qty: number, note?: string) {
     if (!options) {
       return;
     }
     setSendError(null);
     setSending(true);
-    createTransfer(options.product_id, storeIds, qty)
+    createTransfer(options.product_id, storeIds, qty, note)
       .then(() => {
         setOptions(null);
         writeRoute("requests");
