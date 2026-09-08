@@ -72,6 +72,7 @@ export function createTransfer(
   productId: string,
   donorStoreIds: string[],
   qty?: number,
+  note?: string,
 ): Promise<OutgoingTransfer> {
   return requestJson<OutgoingTransfer>("/transfers", {
     method: "POST",
@@ -79,6 +80,7 @@ export function createTransfer(
       product_id: productId,
       donor_store_ids: donorStoreIds,
       ...(qty != null ? { qty } : {}),
+      ...(note ? { note } : {}),
     }),
   });
 }
@@ -87,9 +89,11 @@ export function respondToTransfer(
   transferId: string,
   action: RespondAction,
   qty?: number,
+  message?: string,
 ): Promise<IncomingTransfer> {
-  const body: { action: RespondAction; qty?: number } = { action };
+  const body: { action: RespondAction; qty?: number; message?: string } = { action };
   if (qty != null) body.qty = qty;
+  if (message) body.message = message;
   return requestJson<IncomingTransfer>(`/transfers/${transferId}/respond`, {
     method: "POST",
     body: JSON.stringify(body),
