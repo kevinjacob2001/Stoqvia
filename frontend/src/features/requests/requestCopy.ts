@@ -43,7 +43,7 @@ export function sentStatus(row: OutgoingTransfer): StatusMessage {
     case "FULFILLED":
       return { title: "Accepted — awaiting dispatch", detail: transitDetail(row.lead_days), tone: "info" };
     case "IN_TRANSIT":
-      return { title: "In transit to your store", detail: transitDetail(row.lead_days), tone: "transit" };
+      return { title: "In transit to your store", tone: "transit" };
     case "COMPLETED":
       return {
         title: "Stock received at your store",
