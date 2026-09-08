@@ -60,3 +60,19 @@ flowchart TD
 
 
 
+## Business value
+
+
+| Business challenge               | Stoqvia capability                                           | Operational value                                 |
+| -------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
+| Repeated calls between stores    | One request broadcast to eligible donors                     | The shortage is explained once, in the system     |
+| Slow donor discovery             | Distance-banded stores with forecasted safe surplus          | Staff see who can help without ringing around     |
+| Stockout risk                    | 7-day demand plus HIGH / MEDIUM / LOW classification         | Shortages are visible before the shelf is empty   |
+| Unsafe transfers                 | Donors must stay LOW risk after the move                     | One store’s fill does not create another shortage |
+| Fragmented tracking              | Sent, received, accepted, in-transit, and sent-history views | Status is shared instead of living in inboxes     |
+| Supplier chase after stores fail | Automatic purchase order when invites cannot cover the need  | Fallback is part of the same request              |
+| Routine completion chasing       | Timed completion of due in-transit allocations               | Lead-time follow-up does not rely on memory       |
+
+
+
+
