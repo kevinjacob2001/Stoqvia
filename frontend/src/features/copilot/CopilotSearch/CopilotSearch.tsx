@@ -88,7 +88,7 @@ export default function CopilotSearch({ productId = null, onSelectProduct }: Cop
         }}
       >
         <label className="copilot-search__field">
-          <span className="copilot-search__label">Ask Stoqvia</span>
+          <span className="copilot-search__label">Ask Stoqvia AI</span>
           <input
             type="search"
             value={query}
